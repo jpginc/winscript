@@ -41,7 +41,10 @@ return
 
 ;i followed by space etc puts the script back into insert mode.
 :B0:i::
-{	JPGIncMode := "insert"
+{	if(JPGIncMode == "insert")
+	{	return
+	}
+	JPGIncMode := "insert"
 	BlockInput, Off
 	SplashTextOn, , , Insert Mode
 	sleep 500
