@@ -16,7 +16,7 @@ IfNotExist, % A_ScriptDir "\WinScriptData"
 ;this global variable determains which hotkeys will be in effect
 JPGIncMode := "insert" 
 JPGIncVersionNumber := 1
-JPGIncShortcuts := "i,add,remove,jk,kj,"
+JPGIncShortcuts := "i,add,remove,edit,jk,kj,"
 return
 ;Capslock + Esc always exits the app
 ~CapsLock & Esc::
@@ -87,6 +87,11 @@ return
 		gosub, JPGIncRemove
 		return
 	}
+	:B0O:edit::
+	{	JPGIncMode := "edit"
+		gosub, JPGIncEdit
+		return
+	}
 ;Add New Shortcut Above Here do not edit this line!
 }
 
@@ -142,7 +147,7 @@ JPGIncCombine(fileName, shortcutName, shortcutList)
 	}
 	FileRead, mainFile, % A_scriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
 	FileRead, newFile, % fileName
-	JPGIncInsertScript(mainFile, newFile, shortcutName, shortcutList)
+	JPGIncInsertScript(mainFile, newFile, shortcutName, shortcutList, fileName)
 	if(JPGIncRecompile(mainFile))
 	{	return
 	}
@@ -150,7 +155,7 @@ JPGIncCombine(fileName, shortcutName, shortcutList)
 	return
 }
 
-JPGIncInsertScript(ByRef mainFile, ByRef newFile, shortcutName, shortcutList)
+JPGIncInsertScript(ByRef mainFile, ByRef newFile, shortcutName, shortcutList, fileName)
 {	;replace JPGIncNewName with the new shortcut name and insert it in the "script" part
 shortcutDefault = 
 (
@@ -180,7 +185,7 @@ shortcutDefault =
 	newFile := RegExReplace(newFile, "#if *[`r`n]", "#if JPGIncMode == """ shortcutName """ `n")
 	newFile := RegExReplace(newFile, "#if *;", "#if JPGIncMode == """ shortcutName """ `;")
 	newFile := "`n;start " shortcutName ":`n#if JPGIncMode == """ shortcutName """`nJPGInc" shortcutName ":`n" newFile "`n;end " shortcutName ":`n"
-	mainFile := mainFile newFile
+	mainFile := "JPGInc" shortcutName "file := """ fileName """`n" mainFile newFile
 	return
 }
 
@@ -234,7 +239,7 @@ JPGIncRemove:
 		{	MsgBox, , JPGInc ERROR, ERROR Shortcut does not exist
 			continue
 		}
-		if(removeScriptName == "i" || removeScriptName == "add" || removeScriptName == "remove")
+		if(JPGIncIsDefault(removeScriptName))
 		{	MsgBox, , JPGInc ERROR, ERROR That shortcut cannot be removed!
 			continue
 		}
@@ -266,6 +271,7 @@ JPGIncRemove(removeScriptName, JPGIncShortcuts)
 	theStart := RegExMatch(currentfile, ";start " removeScriptName ":")
 	theEnd := RegExMatch(currentfile, "P);end " removeScriptName ":", length)
 	currentFile := SubStr(currentFile, 1, theStart - 1) SubStr(currentFile, theEnd + length)
+	currentFile := RegExReplace(currentFile, "JPGInc" removeScriptName "file :=.+", "")
 	if(JPGIncRecompile(currentFile))
 	{	return
 	}
@@ -297,5 +303,50 @@ JPGIncRecompile(ByRef newFileString)
 	}
 	Process, close, % newExePid
 	return
+}
+
+JPGIncEdit:
+{	isCancelled := 0
+	BlockInput, off
+	;get a shortcut for the new script
+	Loop
+	{	InputBox, editScriptName, Enter Script Shortcut to Edit:
+		if(isCancelled := errorlevel)
+		{	break
+		}
+		editScriptName = %editScriptName%
+		if(editScriptName == "" && isCancelled := 1)
+		{	break
+		}
+		IfNotInString, JPGIncShortcuts, % editScriptName ","
+		{	MsgBox, , JPGInc ERROR, ERROR Shortcut does not exist
+			continue
+		}
+		if(JPGIncIsDefault(editScriptName))
+		{	MsgBox, , JPGInc ERROR, ERROR That shortcut cannot be removed!
+			continue
+		}
+		IfNotExist, % JPGInc%editScriptName%file
+		{	MsgBox, , JPGInc ERROR, ERROR The origional file does not exist!
+		}
+		else
+		{	run, % JPGInc%editScriptName%file
+		}
+		break
+	}
+	if(isCancelled)
+	{	SplashTextOn, , , Cancelled
+		sleep 500
+		SplashTextOff
+	}
+	BlockInput, on
+	JPGIncMode := "script"
+	return	
+}
+
+;returns true if the given 'name' is in the list of default shortcuts
+JPGIncIsDefault(name)
+{	return (editScriptName == "i" || editScriptName == "add" || editScriptName == "remove" 
+		|| editScriptName == "jk" || editScriptName == "kj" || editScriptName == "edit")
 }
 ;end main:
