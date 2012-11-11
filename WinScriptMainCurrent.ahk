@@ -16,7 +16,7 @@ IfNotExist, % A_ScriptDir "\WinScriptData"
 ;this global variable determains which hotkeys will be in effect
 JPGIncMode := "insert" 
 JPGIncVersionNumber := 1
-JPGIncShortcuts := "i,add,remove,"
+JPGIncShortcuts := "i,add,remove,jk,kj,"
 return
 ;Capslock + Esc always exits the app
 ~CapsLock & Esc::
@@ -41,7 +41,8 @@ return
 
 ;i followed by space etc puts the script back into insert mode.
 :B0:i::
-{	if(JPGIncMode == "insert")
+{	enterInsert:
+	if(JPGIncMode == "insert")
 	{	return
 	}
 	JPGIncMode := "insert"
@@ -52,22 +53,36 @@ return
 	return
 }
 
+#if JPGIncMode == "insert"
+{	
+	:O:jk::
+	:O:kj::
+	JPGIncMode := "win"	
+	BlockInput, On
+	SplashTextOn, , , Script Mode
+	sleep 500
+	SplashTextOff
+	return
+}
+
+
+
 ;when the user isn't in insert mode you can return there by pressing i and then enter or space etc.
 #if JPGIncMode == "script"
 {	;if you click the mouse then your not using keyboard shortcuts so enter insert mode
-	LButton:: 
+	LButton::
 	RButton::
 	MButton::		;this isn't working :-(
 	{	JPGIncMode := "insert"
 		BlockInput, Off
 		return
 	}
-	:B0:add::
+	:B0O:add::
 	{	JPGIncMode := "add"
 		gosub, JPGIncAdd
 		return
 	}
-	:B0:remove::
+	:B0O:remove::
 	{	JPGIncMode := "remove"
 		gosub, JPGIncRemove
 		return
@@ -114,29 +129,41 @@ JPGIncAdd:
 
 ;accepts a file name (must be valid) and combines the selected file with the current version
 ;of WinScript. If WinScript's current version.
+;filemname = string representation of a .ahk path
+;shortcutName = string of the new shortcut to add to the main file
+;shortcutList = a comma seperated string of shortcut's already in use
 JPGIncCombine(fileName, shortcutName, shortcutList)
-{	;replace JPGIncNewName with the new shortcut name and insert it in the "script" part
-shortcutDefault = 
-(
-	
-	;start short JPGIncNewName:
-	:B0:JPGIncNewName::
-	{	JPGIncMode := "JPGIncNewName"
-		gosub, JPGIncJPGIncNewName
-		return
-	}
-	;end short JPGIncNewName:
-	
-;Add New Shortcut Above Here do not edit this line
-)
-	global JPGIncVersionNumber
+{	
 	;get the current version of the program
-	FileInstall, C:\Programming\WinScript\WinScriptData\WinScriptMainCurrent.ahk, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk", 1
+	FileInstall, c:\programming\projects\WinScript\WinScriptMainCurrent.ahk, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk", 1
 	IfNotExist, % A_scriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
 	{	MsgBox, , JPGInc ERROR, ERROR WinScriptMainCurrent Does not exist!, 2
 		return "error"
 	}
 	FileRead, mainFile, % A_scriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
+	FileRead, newFile, % fileName
+	JPGIncInsertScript(mainFile, newFile, shortcutName, shortcutList)
+	if(JPGIncRecompile(mainFile))
+	{	return
+	}
+	renameAndQuit()
+	return
+}
+
+JPGIncInsertScript(ByRef mainFile, ByRef newFile, shortcutName, shortcutList)
+{	;replace JPGIncNewName with the new shortcut name and insert it in the "script" part
+shortcutDefault = 
+(
+	;start short JPGIncNewName:
+	:B0O:JPGIncNewName::
+	{	JPGIncMode := "JPGIncNewName"
+		gosub, JPGIncJPGIncNewName
+		return
+	}
+	;end short JPGIncNewName:	
+;Add New Shortcut Above Here do not edit this line
+)
+	global JPGIncVersionNumber
 	;add the new hotstring
 	StringReplace, newShort, shortcutDefault, JPGIncNewName, % shortcutName, All
 	mainFile := RegExReplace(mainFile, ";Add New Shortcut Above Here do not edit this line", newShort, "" , 1)
@@ -145,7 +172,6 @@ shortcutDefault =
 	;now update the version number
 	StringReplace, mainFile, mainFile, JPGIncVersionNumber := %JPGIncVersionNumber%, % "JPGIncVersionNumber := " (JPGIncVersionNumber + 1)
 	;Now make changes to the script to be loaded
-	FileRead, newFile, % fileName
 	;change andy #ifwin* statements to be #if statements so that && shortcut name can be added to them
 	newFile := RegExReplace(newFile, "#ifwin(active|exist) *, *([^(;|`r|`n]*)", "#if win$1($2) $3")
 	newFile := RegExReplace(newFile, "#ifwinnot(active|exist) *, *([^(;|`r|`n]*)", "#if ! win$1($2) $3")
@@ -153,12 +179,8 @@ shortcutDefault =
 	newFile := RegExReplace(newFile, "#if +[^;`r`n]", "#if JPGIncMode == """ shortcutName """ && ")
 	newFile := RegExReplace(newFile, "#if *[`r`n]", "#if JPGIncMode == """ shortcutName """ `n")
 	newFile := RegExReplace(newFile, "#if *;", "#if JPGIncMode == """ shortcutName """ `;")
-	newFile := "`n`n;start " shortcutName ":`n#if JPGIncMode == """ shortcutName """`nJPGInc" shortcutName ":`n" newFile "`n`n;end " shortcutName ":`n"
+	newFile := "`n;start " shortcutName ":`n#if JPGIncMode == """ shortcutName """`nJPGInc" shortcutName ":`n" newFile "`n;end " shortcutName ":`n"
 	mainFile := mainFile newFile
-	if(JPGIncRecompile(mainFile))
-	{	return
-	}
-	renameAndQuit()
 	return
 }
 
@@ -184,6 +206,7 @@ renameAndQuit()
 batFile =
 (
 ping 127.0.0.1
+del "%A_ScriptFullPath%"
 move /Y "%A_scriptDir%\newExe.exe" "%A_scriptDir%\JPGInc WinScript.exe"
 "%A_scriptDir%\JPGInc WinScript.exe"
 exit
@@ -229,7 +252,7 @@ JPGIncRemove:
 }
 
 JPGIncRemove(removeScriptName, JPGIncShortcuts)
-{	FileInstall, C:\Programming\WinScript\WinScriptData\WinScriptMainCurrent.ahk, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk", 1
+{	FileInstall, C:\Programming\Projects\WinScript\WinScriptMainCurrent.ahk, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk", 1
 	IfNotExist, % A_scriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
 	{	MsgBox, , JPGInc ERROR, ERROR WinScriptMainCurrent Does not exist!, 2
 		return "error"
@@ -250,14 +273,14 @@ JPGIncRemove(removeScriptName, JPGIncShortcuts)
 	return
 }
 
-JPGIncRecompile(newFileString)
-{	oldDirectory := "FileInstall, C:\Programming\WinScript\WinScriptData"
+JPGIncRecompile(ByRef newFileString)
+{	oldDirectory := "FileInstall, c:\programming\projects\WinScript"
 	StringReplace, newFileString, newFileString, % oldDirectory, % "FileInstall, " A_ScriptDir "\WinScriptData", All
-	FileInstall, C:\Programming\WinScript\WinScriptData\Ahk2Exe.exe, % A_ScriptDir "\WinScriptData\Ahk2Exe.exe"
-	FileInstall, C:\Programming\WinScript\WinScriptData\ANSI 32-bit.bin, % A_ScriptDir "\WinScriptData\ANSI 32-bit.bin"
-	FileInstall, C:\Programming\WinScript\WinScriptData\AutoHotkeySC.bin, % A_ScriptDir "\WinScriptData\AutoHotkeySC.bin"
-	FileInstall, C:\Programming\WinScript\WinScriptData\Unicode 32-bit.bin, % A_ScriptDir "\WinScriptData\Unicode 32-bit.bin"
-	FileInstall, C:\Programming\WinScript\WinScriptData\Unicode 64-bit.bin, % A_ScriptDir "\WinScriptData\Unicode 64-bit.bin"
+	FileInstall, C:\Program Files (x86)\AutoHotkey\Compiler\Ahk2Exe.exe, % A_ScriptDir "\WinScriptData\Ahk2Exe.exe"
+	FileInstall, C:\Program Files (x86)\AutoHotkey\Compiler\ANSI 32-bit.bin, % A_ScriptDir "\WinScriptData\ANSI 32-bit.bin"
+	FileInstall, C:\Program Files (x86)\AutoHotkey\Compiler\AutoHotkeySC.bin, % A_ScriptDir "\WinScriptData\AutoHotkeySC.bin"
+	FileInstall, C:\Program Files (x86)\AutoHotkey\Compiler\Unicode 32-bit.bin, % A_ScriptDir "\WinScriptData\Unicode 32-bit.bin"
+	FileInstall, C:\Program Files (x86)\AutoHotkey\Compiler\Unicode 64-bit.bin, % A_ScriptDir "\WinScriptData\Unicode 64-bit.bin"
 	backupCurrent()
 	FileAppend, % newFileString, % A_scriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
 	RunWait, % A_ScriptDir "\WinScriptData\Ahk2Exe.exe /in " A_scriptDir "\WinScriptData\WinScriptMainCurrent.ahk /out newExe.exe"
