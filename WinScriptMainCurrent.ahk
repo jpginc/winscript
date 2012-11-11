@@ -16,7 +16,7 @@ IfNotExist, % A_ScriptDir "\WinScriptData"
 ;this global variable determains which hotkeys will be in effect
 JPGIncMode := "insert" 
 JPGIncVersionNumber := 1
-JPGIncShortcuts := "i,add,remove,edit,jk,kj,"
+JPGIncShortcuts := "i,add,remove,edit,jk,kj,update,"
 return
 ;Capslock + Esc always exits the app
 ~CapsLock & Esc::
@@ -90,6 +90,11 @@ return
 	:B0O:edit::
 	{	JPGIncMode := "edit"
 		gosub, JPGIncEdit
+		return
+	}
+	:B0O:update::
+	{	JPGIncMode := "update"
+		gosub, JPGIncUpdate
 		return
 	}
 ;Add New Shortcut Above Here do not edit this line!
@@ -263,7 +268,16 @@ JPGIncRemove(removeScriptName, JPGIncShortcuts)
 		return "error"
 	}
 	FileRead, currentFile, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
-	StringReplace, newShortcuts, JPGIncShortcuts, % removeScriptName ","
+	JPGIncRemoveScript(currentFIle, removeScriptName, JPGIncShortcuts)
+	if(JPGIncRecompile(currentFile))
+	{	return
+	}
+	renameAndQuit()
+	return
+}
+
+JPGIncRemoveScript(ByRef currentFile, removeScriptName, JPGIncShortcuts)
+{	StringReplace, newShortcuts, JPGIncShortcuts, % removeScriptName ","
 	StringReplace, currentFile, currentFile, % JPGIncShortcuts, % newShortcuts
 	theStart := RegExMatch(currentfile, ";start short " removeScriptName ":")
 	theEnd := RegExMatch(currentfile, "P);end short " removeScriptName ":", length)
@@ -272,13 +286,8 @@ JPGIncRemove(removeScriptName, JPGIncShortcuts)
 	theEnd := RegExMatch(currentfile, "P);end " removeScriptName ":", length)
 	currentFile := SubStr(currentFile, 1, theStart - 1) SubStr(currentFile, theEnd + length)
 	currentFile := RegExReplace(currentFile, "JPGInc" removeScriptName "file :=.+", "")
-	if(JPGIncRecompile(currentFile))
-	{	return
-	}
-	renameAndQuit()
-	return
+	return		
 }
-
 JPGIncRecompile(ByRef newFileString)
 {	oldDirectory := "FileInstall, c:\programming\projects\WinScript"
 	StringReplace, newFileString, newFileString, % oldDirectory, % "FileInstall, " A_ScriptDir "\WinScriptData", All
@@ -289,7 +298,7 @@ JPGIncRecompile(ByRef newFileString)
 	FileInstall, C:\Program Files (x86)\AutoHotkey\Compiler\Unicode 64-bit.bin, % A_ScriptDir "\WinScriptData\Unicode 64-bit.bin"
 	backupCurrent()
 	FileAppend, % newFileString, % A_scriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
-	RunWait, % A_ScriptDir "\WinScriptData\Ahk2Exe.exe /in " A_scriptDir "\WinScriptData\WinScriptMainCurrent.ahk /out newExe.exe"
+	RunWait, WinScriptData\Ahk2Exe.exe /in WinScriptData\WinScriptMainCurrent.ahk /out newExe.exe
 	Run, newExe.exe, , UseErrorLevel, newExePid
 	sleep, 1000
 	IfWinExist, ahk_pid %newExePid% ahk_class #32770 
@@ -328,6 +337,12 @@ JPGIncEdit:
 		}
 		IfNotExist, % JPGInc%editScriptName%file
 		{	MsgBox, , JPGInc ERROR, ERROR The origional file does not exist!
+			FileSelectFile, tempFileName, , , , *.ahk
+			if(errorlevel && isCancelled := 1)
+			{	break
+			}
+			run, % tempFileName
+			break
 		}
 		else
 		{	run, % JPGInc%editScriptName%file
@@ -344,9 +359,65 @@ JPGIncEdit:
 	return	
 }
 
+JPGIncUpdate:
+{	isCancelled := 0
+	BlockInput, off
+	;get a shortcut for the new script
+	Loop
+	{	InputBox, shortcut, Enter Script Shortcut to Update:
+		if(isCancelled := errorlevel)
+		{	break
+		}
+		shortcut = %shortcut%
+		if(shortcut == "" && isCancelled := 1)
+		{	break
+		}
+		IfNotInString, JPGIncShortcuts, % shortcut ","
+		{	MsgBox, , JPGInc ERROR, ERROR Shortcut does not exist
+			continue
+		}
+		if(JPGIncIsDefault(shortcut))
+		{	MsgBox, , JPGInc ERROR, ERROR That shortcut cannot be removed/updated!
+			continue
+		}
+		tempFileName := % JPGInc%editScriptName%file
+		IfNotExist, % tempFileName
+		{	MsgBox, , JPGInc ERROR, ERROR The origional file does not exist!
+			FileSelectFile, tempFileName, , , , *.ahk
+			if(errorlevel && isCancelled := 1)
+			{	break
+			}
+		fileRead, newFile, % tempFileName
+		JPGIncUpdate(newFile, editScriptName, tempFileName, JPGIncShortcuts)
+		break
+		}
+	}
+	if(isCancelled)
+	{	SplashTextOn, , , Cancelled
+		sleep 500
+		SplashTextOff
+	}
+	BlockInput, on
+	JPGIncMode := "script"
+	return
+}
+
+JPGIncUpdate(ByRef newFile, ScriptName, tempFileName, JPGIncShortcuts)
+{	FileInstall, c:\programming\projects\WinScript\WinScriptMainCurrent.ahk, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk", 1
+	FileRead, mainFile, % A_scriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
+	JPGIncRemoveScript(mainFile, ScriptName, JPGIncShortcuts)
+	JPGIncInsertScript(mainFile, newFile, scriptName, JPGIncShortcuts , tempFileName)
+	JPGIncRecompile(mainFile)
+	if(JPGIncRecompile(mainFile))
+	{	return "error"
+	}
+	renameAndQuit()
+	return
+}
 ;returns true if the given 'name' is in the list of default shortcuts
 JPGIncIsDefault(name)
-{	return (editScriptName == "i" || editScriptName == "add" || editScriptName == "remove" 
-		|| editScriptName == "jk" || editScriptName == "kj" || editScriptName == "edit")
+{	return (name == "i" || name == "add" || name == "remove" 
+		|| name == "jk" || name == "kj" || name == "edit"
+		|| name == "update")
 }
 ;end main:
