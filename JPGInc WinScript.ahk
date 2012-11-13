@@ -248,7 +248,9 @@ JPGIncUpdate:
 			FileRead, mainFile, % A_scriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
 			FileRead, newFile, % filelocation
 			JPGIncRemoveScript(mainFile, shortcut, JPGIncShortcuts)
-			JPGIncInsertScript(mainFile, newFile, shortcut, JPGIncShortcuts , filelocation)
+			;because main file's JPGIncShortcuts will be without the current shortcut we have to strip it out for the next call
+			StringReplace, newShortcuts, JPGIncShortcuts, % shortcut ",", , All 
+			JPGIncInsertScript(mainFile, newFile, shortcut, newShortcuts , filelocation)
 			if(JPGIncRecompile(mainFile))
 			{	break
 			}
@@ -306,6 +308,8 @@ JPGIncRemoveScript(ByRef currentFile, removeScriptName, JPGIncShortcuts)
 {	;remove it from the current shortcut list
 	StringReplace, newShortcuts, JPGIncShortcuts, % removeScriptName ","
 	StringReplace, currentFile, currentFile, % JPGIncShortcuts, % newShortcuts
+	;remove the file reference
+	currentFile := RegExReplace(currentFile, "JPGInc" removeScriptName "fileLocation :=.*(`r`n)")
 	;remove the hostring
 	theStart := RegExMatch(currentfile, ";start short " removeScriptName ":")
 	theEnd := RegExMatch(currentfile, "P);end short " removeScriptName ":", length)
