@@ -11,7 +11,7 @@ if not A_IsAdmin
 #UseHook on 	;because block input is used this needs to be on to allow hot strings to work properly?
 #InstallMouseHook	;trying to get a click to exit script mode but doesn't work...
 #SingleInstance force
-
+singleKeyList := "{LControl}{RControl}{LAlt}{RAlt}{LShift}{RShift}{LWin}{RWin}{AppsKey}{F1}{F2}{F3}{F4}{F5}{F6}{F7}{F8}{F9}{F10}{F11}{F12}{Left}{Right}{Up}{Down}{Home}{End}{PgUp}{PgDn}{Del}{Ins}{BS}{Capslock}{Numlock}{PrintScreen}{Pause}"
 
 ;a place to keep old version backups/complier files etc.
 IfNotExist, % A_ScriptDir "\WinScriptData"
@@ -20,8 +20,10 @@ IfNotExist, % A_ScriptDir "\WinScriptData"
 
 ;this global variable determains which hotkeys will be in effect
 JPGIncMode := "insert" 
+JPGIncInterrupt := ""
+JPGIncGlobalObject := ""
 JPGIncVersionNumber := 1
-JPGIncShortcuts := "i,add,remove,edit,jk,kj,update,main,"
+JPGIncShortcuts := "add,remove,edit,update,main,"
 return
 
 ;Capslock + Esc always exits the program
@@ -38,78 +40,97 @@ return
 	KeyWait capslock
 	SetCapsLockState, off
 	JPGIncMode := "script"	
-	BlockInput, On
-	SplashTextOn, , , Script Mode
-	sleep 500
-	SplashTextOff
+	;~ SplashTextOn, , , Script Mode
+	;~ sleep 500
+	;~ SplashTextOff
+	scriptSelector(JPGIncShortcuts)
 	return
 }
-
-;i followed by space etc puts the script back into insert mode.
-:B0:i::
-{	;if your already in insert mode dont splash the 'insert mode' message
-	if(JPGIncMode == "insert")
-	{	return	
-	}
-	JPGIncMode := "insert"
-	BlockInput, Off
-	SplashTextOn, , , Insert Mode
-	sleep 500
-	SplashTextOff
-	return
-}
-
-;I use jk/kj to enter 'win' mode, which helps me navigate around the screen with my
-;keyboard
-#if JPGIncMode == "insert"
-{	:O:jk::
-	:O:kj::
-	JPGIncMode := "script"	
-	BlockInput, On
-	SplashTextOn, , , Script Mode
-	sleep 500
-	SplashTextOff
-	return
-}
-
-;below here are the list of shortcuts that become available in 'script mode'
 #if JPGIncMode == "script"
 {	;if you click the mouse then your not using keyboard shortcuts so enter insert mode
 	LButton::
 	RButton::
-	MButton::		;this isn't working :-(
-	{	JPGIncMode := "insert"
-		BlockInput, Off
+	MButton::
+	{	forceInsert()
 		return
 	}
-	:B0O:add::		;add an script from file to the main script
-	{	JPGIncMode := "add"
-		gosub, JPGIncAdd
-		return
-	}
-	:B0O:remove::	;remove a script that has already been added to the main script
-	{	JPGIncMode := "remove"
-		gosub, JPGIncRemove
-		return
-	}
-	:B0O:edit::		;edit a script that has already been added to the main script
-	{	JPGIncMode := "edit"
-		gosub, JPGIncEdit
-		return
-	}
-	:B0O:update::	;update a script that has already been added to the main script
-	{	JPGIncMode := "update"
-		gosub, JPGIncUpdate
-		return
-	}
-;Add New Shortcut Above Here do not edit this line!
 }
-
+scriptSelector(shortcuts)
+{	global
+	shortcutList := object()
+	StringSplit, shortcuts, shortcuts, `,
+	Loop, % shortcuts0
+	{	shortcutList.insert(shortcuts%A_index%)
+	}
+	JPGIncInterrupt := ""
+	Loop,	;this top loop is the initial choice
+	{	if((choice := choiceDisplay(shortcutList, "Select Script to run")) == "cancelled" || choice == "stop")
+		{	return
+		}
+		if(isLabel("JPGInc" choice))
+		{	JPGIncMode := choice
+			JPGIncGlobalObject := ""
+			JPGIncGlobalDescription := ""
+			gosub, % "JPGInc" choice
+		}
+		else
+		{	splash("The shortcut " choice " is invalid!")
+			continue
+		}
+		previousObjects := object()
+		previousDescriptions := object()
+		counter := 1
+		Loop,	;check if there are any more choices needed
+		{	className := JPGIncGlobalObject.__class
+			;the object was set to a class with a getActionList function
+			if(isFunc(%className%.getActionList))	
+			{	previousObjects.insert(counter, JPGIncGlobalObject)
+				choiceList := JPGIncGlobalObject.getActionList()
+				if(choiceList.maxIndex())	;a choice list was returned with at least one item in it
+				{	choice := choiceDisplay(choiceList, JPGIncGlobalDescription)
+					if(choice != "cancelled") 	;if it is cancelled it will fall down to the 'revert back to last valid object'
+					{	JPGIncGlobalObject := ""
+						if(isFunc(%className%[choice]))	;if the choice is a function within the object 
+						{	previousObjects[counter++][choice]()	;call the function
+							continue
+						}
+						else
+						{	previousObjects[counter++].actionHandler(choice)	;call the action handler
+							continue
+						}
+					}
+				}
+				else if(! choiceList) ;if nothing is returned from getActionList
+				{	splash("The shortcut " choice " returned an invalid object!")
+				}
+				else if(choiceList.maxIndex() == "" && isObject(choiceList))	;the returned choice list was empty!
+				{	splash("The shortcut " choice " returned an empty list of choices!")
+				}
+				else if(! isObject(choiceList))	;the returned item was a string, not a choice list
+				{	splash(choiceList)
+				}
+				JPGIncGlobalObject := previousObjects[--counter]	;revert back to the last valid object
+				continue
+			}
+			;the object was set to a string
+			if(JPGIncGlobalObject)
+			{	if(JPGIncGlobalObject != "cancelled")
+				{	splash(JPGIncGlobalObject)	;if it wasnt cancelled then the object may have been set to an error message
+				}	;go back to the menu before the cancelled/error message
+				counter--
+				JPGIncGlobalObject := ""
+				continue
+			}
+			;the object was set to nothing, go back to main menu
+			break
+		}
+	}
+	return
+}
 ;add a script from file
 #if JPGIncMode == "add"
 JPGIncAdd:
-{	BlockInput, off
-	;get a shortcut for the new script
+{	;get a shortcut for the new script
 	Loop
 	{	message := JPGIncGetScriptName(JPGIncShortcuts, shortcut)
 		if(isCancelled := (message == "cancelled"))
@@ -136,8 +157,7 @@ JPGIncAdd:
 ;extracts a script that has already been added to the main script but is no longer wanted
 #if JPGIncMode == "remove"
 JPGIncRemove:
-{	BlockInput, off
-	;get a shortcut for the script to be removed
+{	;get a shortcut for the script to be removed
 	Loop
 	{	message := JPGIncGetScriptName(JPGIncShortcuts, shortcut)
 		if(isCancelled := (message == "cancelled"))
@@ -169,8 +189,7 @@ JPGIncRemove:
 
 ;runs an already installed script for editing. The edited script isn't used until update is called
 JPGIncEdit:
-{	BlockInput, off
-	Loop
+{	Loop
 	{	message := JPGIncGetScriptName(JPGIncShortcuts, shortcut)
 		if(isCancelled := (message == "cancelled"))
 		{	break
@@ -207,8 +226,7 @@ JPGIncEdit:
 
 ;updates an already included script
 JPGIncUpdate:
-{	BlockInput, off
-	Loop
+{	Loop
 	{	message := JPGIncGetScriptName(JPGIncShortcuts, shortcut)
 		if(isCancelled := (message == "cancelled"))
 		{	break
@@ -265,8 +283,7 @@ JPGIncUpdate:
 ;returns true if the given 'name' is a default shortcut
 JPGIncIsDefaultShortcut(name)
 {	return (name == "i" || name == "add" || name == "remove" 
-		|| name == "jk" || name == "kj" || name == "edit"
-		|| name == "update" || name == "main")
+		|| name == "edit" || name == "update" || name == "main")
 }
 
 ;this function takes a list of comma seperated strings and compare input to that list
@@ -274,8 +291,7 @@ JPGIncIsDefaultShortcut(name)
 ;returns notExist if the input is one NOT part of the comma seperated values
 ;returns cancelled if the input is cancelled or blank
 JPGIncGetScriptName(JPGIncShortcuts, ByRef shortcut)
-{	BlockInput, off
-	;get a shortcut for the new script
+{	;get a shortcut for the new script
 	InputBox, newScriptName, Enter Script Shortcut:
 	if(errorlevel)
 	{	return "cancelled"
@@ -294,11 +310,10 @@ JPGIncGetScriptName(JPGIncShortcuts, ByRef shortcut)
 ;when one of add/remove/edit/update are called this is used at the end.
 JPGIncShortCancelled(isCancelled)
 {	if(isCancelled)
-	{	SplashTextOn, , , Cancelled
+	{	SplashTextOn, %A_screenwidth%, , Cancelled
 		sleep 500
 		SplashTextOff
 	}
-	BlockInput, on
 	JPGIncMode := "script"
 	return
 }
@@ -310,10 +325,6 @@ JPGIncRemoveScript(ByRef currentFile, removeScriptName, JPGIncShortcuts)
 	StringReplace, currentFile, currentFile, % JPGIncShortcuts, % newShortcuts
 	;remove the file reference
 	currentFile := RegExReplace(currentFile, "JPGInc" removeScriptName "fileLocation :=.*(`r`n)")
-	;remove the hostring
-	theStart := RegExMatch(currentfile, ";start short " removeScriptName ":")
-	theEnd := RegExMatch(currentfile, "P);end short " removeScriptName ":", length)
-	currentFile := SubStr(currentFile, 1, theStart - 1) SubStr(currentFile, theEnd + length)
 	;remove the script
 	theStart := RegExMatch(currentfile, ";start " removeScriptName ":")
 	theEnd := RegExMatch(currentfile, "P);end " removeScriptName ":", length)
@@ -352,8 +363,7 @@ JPGIncRecompile(ByRef newFileString)
 	if(! errorlevel) ;if it does then there might be a problem with the recompilation so give the user an option to use the current verison
 	{	msgbox, 4 , JPGInc Warning, Warning an error was detected in the new script`nWould you like to keep using the CURRENT version?
 		IfMsgBox, Yes
-		{	BlockInput, on
-			JPGIncMode := "script"
+		{	JPGIncMode := "script"
 			Process, close, % newExePid
 			return "error"
 		}
@@ -392,21 +402,7 @@ JPGIncCombine(fileName, shortcutName, shortcutList)
 ;changes any #if statements to only fire when in the shortcut's mode
 JPGIncInsertScript(ByRef mainFile, ByRef newFile, shortcutName, shortcutList, fileName)
 {
-shortcutDefault = 
-(
-	;start short JPGIncNewName:
-	:B0O:JPGIncNewName::
-	{	JPGIncMode := "JPGIncNewName"
-		gosub, JPGIncJPGIncNewName
-		return
-	}
-	;end short JPGIncNewName:	
-;Add New Shortcut Above Here do not edit this line
-)
 	global JPGIncVersionNumber
-	;add the new hotstring
-	StringReplace, newShort, shortcutDefault, JPGIncNewName, % shortcutName, All
-	mainFile := RegExReplace(mainFile, ";Add New Shortcut Above Here do not edit this line", newShort, "" , 1)
 	;now add the new shortcut to the shortcut list
 	StringReplace, mainFile, mainFile, % shortcutList, % shortcutList shortcutName ",", All
 	;now update the version number
@@ -456,5 +452,113 @@ exit
 	FileAppend, % batFile, tempBat.bat
 	Run, tempBat.bat, , Hide
 	ExitApp
+}
+
+arrayToString(theArray)
+{	theString := ""
+	for key, astring in theArray
+	{	theString .= astring "`n"
+	}
+	return theString
+}
+;accepts a list of strings, a character and a string
+;returns a subset of currentList who's strings contain the character ordered by 
+;those who most closely match the string allLetters
+filterDisplay(currentList, thisLetter, allLetters)
+{	tempArray := object()
+	returnArray := object()
+	simpleMatch := thisLetter
+	;if this is the second time the letter has appeared then match a seriese of letters
+	;between the first appearence and this letter
+	if((start := InStr(allLetters, thisLetter)) && allLetters)
+	{	allLetters2 := allLetters thisLetter
+		StringTrimLeft, simpleMatch, allLetters2, start - 1
+	}
+	for key, word in currentList
+	{	if(instr(word, simpleMatch))
+		{	tempArray.insert(word)
+		}
+	}
+	;then put the words that match the whole string at the top
+	end := tempArray.maxindex()
+	start := 1
+	allLetters .= thisLetter
+	for key, word in tempArray
+	{	If(InStr(word, allLetters))
+		{	returnArray.insert(start++, word)
+		}
+		else
+		{	returnArray.insert(end--, word)
+		}
+	}
+	return returnArray
+}
+;choiceDisplay opens a GUI with it's background transparent
+;returns the string selected from the display list or "cancelled"
+choiceDisplay(displayList, prompt = "")
+{	global
+	Gui 12: new
+	Gui 12: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu 
+	Gui 12: font, s18 bold, TimesNewRoman 
+	Gui 12:Color, White
+	Gui 12: add, text, w%A_screenWidth% Center, % prompt
+	Gui 12: add, text, vtypedTextGui12 w%A_screenWidth% Center,
+	Gui 12: add, text, % "vchoiceListGui12 x150 h" A_screenHeight -150 " w" A_ScreenWidth - 200, % arrayToString(displayList)
+	Gui 12: show, NoActivate y120, JPGIncGui12
+	WinSet, TransColor, White 
+	fullStringGui12 := ""
+	arrayCountGui12 := 1
+	arrayArrayGui12 := Object(1, displayList)
+	Loop,
+	{	input, oneLetterGui12, L1,{Esc}{BackSpace}{Space}{enter}
+		if(ErrorLevel == "EndKey:Backspace")
+		{ 	if(StrLen(fullStringGui12) < 1)
+			{ 	continue
+			}
+			StringTrimRight, fullStringGui12, fullStringGui12, 1
+			arrayCountGui12--
+			guicontrol, 12:, choiceListGui12, % arrayToString(arrayArrayGui12[arrayCountGui12])
+			GuiControl, 12:, typedTextGui12, % fullStringGui12
+			continue
+		}
+		else if(ErrorLevel == "EndKey:Escape")
+		{	IfWinNotExist, JPGIncGui12
+			{	return "stop"
+			}
+			Gui 12: Destroy
+			return "cancelled"
+		}
+		if(InStr(errorLevel, "EndKey:"))
+		{	Gui 12: Destroy
+			return arrayArrayGui12[arrayCountGui12][1]
+		}
+		
+		arrayArrayGui12[arrayCountGui12 + 1] := filterDisplay(arrayArrayGui12[arrayCountGui12], oneLetterGui12, fullStringGui12)
+		if(arrayArrayGui12[arrayCountGui12 + 1].maxIndex() == "")
+		{	continue
+		}
+		arrayCountGui12++
+		fullStringGui12 .= oneLetterGui12
+		GuiControl, 12:, typedTextGui12, % fullStringGui12
+		guicontrol, 12:, choiceListGui12, % arrayToString(arrayArrayGui12[arrayCountGui12])
+	}
+
+} 
+
+forceInsert()
+{	IfWinExist, JPGIncGui12
+	{	Gui 12: destroy
+		send, {esc}
+	}
+	JPGIncInterrupt := 1
+	JPGIncMode := "insert"
+	return
+}
+
+splash(string)
+{	SplashTextOn, % A_ScreenWidth, , % string
+	Input, notNeeded, L1, singleKeyList
+	SplashTextOff
+	return
 }
 ;end main:
