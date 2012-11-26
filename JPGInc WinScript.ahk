@@ -1,15 +1,13 @@
-/* This program was written by Joshua Graham jpg.inc.au@gmail.com
+/* This program was written by Joshua Graham joshua.graham@jpginc.com.au
  * Anyone may use any part of this code for any non-malicious purpose
  * with or without referencing me. There is No Warranty 
-*/
+ */
 
 ;start main:
 if not A_IsAdmin
 {	Run *RunAs "%A_ScriptFullPath%"  ; Requires v1.0.92.01+
 	ExitApp
 }
-#UseHook on 	;because block input is used this needs to be on to allow hot strings to work properly?
-#InstallMouseHook	;trying to get a click to exit script mode but doesn't work...
 #SingleInstance force
 singleKeyList := "{LControl}{RControl}{LAlt}{RAlt}{LShift}{RShift}{LWin}{RWin}{AppsKey}{F1}{F2}{F3}{F4}{F5}{F6}{F7}{F8}{F9}{F10}{F11}{F12}{Left}{Right}{Up}{Down}{Home}{End}{PgUp}{PgDn}{Del}{Ins}{BS}{Capslock}{Numlock}{PrintScreen}{Pause}"
 
@@ -46,14 +44,12 @@ return
 	scriptSelector(JPGIncShortcuts)
 	return
 }
-#if JPGIncMode == "script"
-{	;if you click the mouse then your not using keyboard shortcuts so enter insert mode
-	LButton::
-	RButton::
-	MButton::
-	{	forceInsert()
-		return
-	}
+;if you click the mouse then your not using keyboard shortcuts so enter insert mode
+~LButton::
+~RButton::
+~MButton::
+{	forceInsert()
+	return
 }
 scriptSelector(shortcuts)
 {	global
@@ -64,7 +60,7 @@ scriptSelector(shortcuts)
 	}
 	JPGIncInterrupt := ""
 	Loop,	;this top loop is the initial choice
-	{	if((choice := choiceDisplay(shortcutList, "Select Script to run")) == "cancelled" || choice == "stop")
+	{	if((choice := choiceDisplay(shortcutList, "Select Script to run")) == "cancelled" || choice == "stop!")
 		{	return
 		}
 		if(isLabel("JPGInc" choice))
@@ -89,7 +85,10 @@ scriptSelector(shortcuts)
 				if(choiceList.maxIndex())	;a choice list was returned with at least one item in it
 				{	choice := choiceDisplay(choiceList, JPGIncGlobalDescription)
 					if(choice != "cancelled") 	;if it is cancelled it will fall down to the 'revert back to last valid object'
-					{	JPGIncGlobalObject := ""
+					{	if(choice == "stop!")
+						{	return
+						}
+						JPGIncGlobalObject := ""
 						if(isFunc(%className%[choice]))	;if the choice is a function within the object 
 						{	previousObjects[counter++][choice]()	;call the function
 							continue
@@ -324,7 +323,7 @@ JPGIncRemoveScript(ByRef currentFile, removeScriptName, JPGIncShortcuts)
 	StringReplace, newShortcuts, JPGIncShortcuts, % removeScriptName ","
 	StringReplace, currentFile, currentFile, % JPGIncShortcuts, % newShortcuts
 	;remove the file reference
-	currentFile := RegExReplace(currentFile, "JPGInc" removeScriptName "fileLocation :=.*(`r`n)")
+	currentFile := RegExReplace(currentFile, "JPGInc" removeScriptName "fileLocation :=.*(`r`n)", "$1")
 	;remove the script
 	theStart := RegExMatch(currentfile, ";start " removeScriptName ":")
 	theEnd := RegExMatch(currentfile, "P);end " removeScriptName ":", length)
@@ -523,7 +522,7 @@ choiceDisplay(displayList, prompt = "")
 		}
 		else if(ErrorLevel == "EndKey:Escape")
 		{	IfWinNotExist, JPGIncGui12
-			{	return "stop"
+			{	return "stop!"
 			}
 			Gui 12: Destroy
 			return "cancelled"
@@ -546,12 +545,12 @@ choiceDisplay(displayList, prompt = "")
 } 
 
 forceInsert()
-{	IfWinExist, JPGIncGui12
+{	JPGIncInterrupt := 1
+	JPGIncMode := "insert"
+	IfWinExist, JPGIncGui12
 	{	Gui 12: destroy
 		send, {esc}
 	}
-	JPGIncInterrupt := 1
-	JPGIncMode := "insert"
 	return
 }
 
