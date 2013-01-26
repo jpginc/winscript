@@ -202,7 +202,7 @@ JPGIncEdit:
 			{	IfNotExist, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
 				{	FileInstall, c:\programming\projects\WinScript\JPGInc WinScript.ahk, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk", 1
 				}
-				Run, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
+				Run, % """"A_ProgramFiles "\AutoHotkey\SciTE\SciTE.exe ""-open:" sciteFilename(A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk") """" 
 				break
 			}
 			;there is a global variable saved for each script added to the master script which 
@@ -215,7 +215,7 @@ JPGIncEdit:
 				{	break
 				}
 			}
-			run, % tempFileName
+			run, % """"A_ProgramFiles "\AutoHotkey\SciTE\SciTE.exe ""-open:" sciteFilename(tempFileName) """"
 			break
 		}		
 	}
@@ -559,5 +559,10 @@ splash(string)
 	Input, notNeeded, L1, singleKeyList
 	SplashTextOff
 	return
+}
+
+sciteFilename(fileName)
+{	StringReplace, filename, filename, \, \\, All
+	return filename
 }
 ;end main:
