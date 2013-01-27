@@ -18,6 +18,7 @@ IfNotExist, % A_ScriptDir "\WinScriptData"
 
 ;this global variable determains which hotkeys will be in effect
 JPGIncMode := "insert" 
+JPGIncMode := "insert" 
 JPGIncInterrupt := ""
 JPGIncGlobalObject := ""
 JPGIncVersionNumber := 1
@@ -202,7 +203,7 @@ JPGIncEdit:
 			{	IfNotExist, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
 				{	FileInstall, c:\programming\projects\WinScript\JPGInc WinScript.ahk, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk", 1
 				}
-				Run, % """"A_ProgramFiles "\AutoHotkey\SciTE\SciTE.exe ""-open:" sciteFilename(A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk") """" 
+				Run, edit "%A_ScriptDir%\WinScriptData\WinScriptMainCurrent.ahk"
 				break
 			}
 			;there is a global variable saved for each script added to the master script which 
@@ -215,7 +216,7 @@ JPGIncEdit:
 				{	break
 				}
 			}
-			run, % """"A_ProgramFiles "\AutoHotkey\SciTE\SciTE.exe ""-open:" sciteFilename(tempFileName) """"
+			run, edit "%tempFileName%"
 			break
 		}		
 	}
@@ -323,7 +324,7 @@ JPGIncRemoveScript(ByRef currentFile, removeScriptName, JPGIncShortcuts)
 	StringReplace, newShortcuts, JPGIncShortcuts, % removeScriptName ","
 	StringReplace, currentFile, currentFile, % JPGIncShortcuts, % newShortcuts
 	;remove the file reference
-	currentFile := RegExReplace(currentFile, "JPGInc" removeScriptName "fileLocation :=.*(`r`n)", "$1")
+	currentFile := RegExReplace(currentFile, "JPGInc" removeScriptName "fileLocation :=.*`n")
 	;remove the script
 	theStart := RegExMatch(currentfile, ";start " removeScriptName ":")
 	theEnd := RegExMatch(currentfile, "P);end " removeScriptName ":", length)
@@ -344,15 +345,15 @@ JPGIncRecompile(ByRef newFileString)
 	newFileString := SubStr(newFileString, 1, theStart - 1) SubStr(newFileString, theEnd + length)
 	StringReplace, newFileString, newFileString, % "FileInstall, c:\programming\projects\WinScript\JPGInc WinScript.ahk"
 		, % oldDirectory "\WinScriptMainCurrent.ahk", All
-	StringReplace, newFileString, newFileString, % "FileInstall, C:\Program Files (x86)\AutoHotkey\Compiler", % oldDirectory, All
+	StringReplace, newFileString, newFileString, % "FileInstall, C:\Program Files\AutoHotkey\Compiler", % oldDirectory, All
 	;end delete after first compile:
 	StringReplace, newFileString, newFileString, % oldDirectory, % "FileInstall, " A_ScriptDir "\WinScriptData", All
 	StringReplace, newFileString, newFileString, % "oldDirectory := """	oldDirectory """", % "oldDirectory := ""FileInstall, " A_ScriptDir "\WinScriptData"""
-	FileInstall, C:\Program Files (x86)\AutoHotkey\Compiler\Ahk2Exe.exe, % A_ScriptDir "\WinScriptData\Ahk2Exe.exe"
-	FileInstall, C:\Program Files (x86)\AutoHotkey\Compiler\ANSI 32-bit.bin, % A_ScriptDir "\WinScriptData\ANSI 32-bit.bin"
-	FileInstall, C:\Program Files (x86)\AutoHotkey\Compiler\AutoHotkeySC.bin, % A_ScriptDir "\WinScriptData\AutoHotkeySC.bin"
-	FileInstall, C:\Program Files (x86)\AutoHotkey\Compiler\Unicode 32-bit.bin, % A_ScriptDir "\WinScriptData\Unicode 32-bit.bin"
-	FileInstall, C:\Program Files (x86)\AutoHotkey\Compiler\Unicode 64-bit.bin, % A_ScriptDir "\WinScriptData\Unicode 64-bit.bin"
+	FileInstall, C:\Program Files\AutoHotkey\Compiler\Ahk2Exe.exe, % A_ScriptDir "\WinScriptData\Ahk2Exe.exe"
+	FileInstall, C:\Program Files\AutoHotkey\Compiler\ANSI 32-bit.bin, % A_ScriptDir "\WinScriptData\ANSI 32-bit.bin"
+	FileInstall, C:\Program Files\AutoHotkey\Compiler\AutoHotkeySC.bin, % A_ScriptDir "\WinScriptData\AutoHotkeySC.bin"
+	FileInstall, C:\Program Files\AutoHotkey\Compiler\Unicode 32-bit.bin, % A_ScriptDir "\WinScriptData\Unicode 32-bit.bin"
+	FileInstall, C:\Program Files\AutoHotkey\Compiler\Unicode 64-bit.bin, % A_ScriptDir "\WinScriptData\Unicode 64-bit.bin"
 	backupCurrent()	;backup the current running version in case there was a problem with the merging proccess
 	FileAppend, % newFileString, % A_scriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
 	RunWait, WinScriptData\Ahk2Exe.exe /in WinScriptData\WinScriptMainCurrent.ahk /out newExe.exe
