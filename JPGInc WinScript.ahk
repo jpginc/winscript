@@ -1,4 +1,5 @@
 /* This program was written by Joshua Graham joshua.graham@jpginc.com.au
+ * www.jpiginc.com.au
  * Anyone may use any part of this code for any non-malicious purpose
  * with or without referencing me. There is No Warranty 
  */
@@ -18,11 +19,10 @@ IfNotExist, % A_ScriptDir "\WinScriptData"
 
 ;this global variable determains which hotkeys will be in effect
 JPGIncMode := "insert" 
-JPGIncMode := "insert" 
 JPGIncInterrupt := ""
 JPGIncGlobalObject := ""
 JPGIncVersionNumber := 1
-JPGIncShortcuts := "add,remove,edit,update,main,"
+JPGIncShortcuts := "add,remove,edit,update,"
 return
 
 ;Capslock + Esc always exits the program
@@ -39,9 +39,6 @@ return
 	KeyWait capslock
 	SetCapsLockState, off
 	JPGIncMode := "script"	
-	;~ SplashTextOn, , , Script Mode
-	;~ sleep 500
-	;~ SplashTextOff
 	scriptSelector(JPGIncShortcuts)
 	return
 }
@@ -203,7 +200,7 @@ JPGIncEdit:
 			{	IfNotExist, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk"
 				{	FileInstall, c:\programming\projects\WinScript\JPGInc WinScript.ahk, % A_ScriptDir "\WinScriptData\WinScriptMainCurrent.ahk", 1
 				}
-				Run, edit "%A_ScriptDir%\WinScriptData\WinScriptMainCurrent.ahk"
+				Run, %A_ProgramFiles%\Autohotkey\SciTE\SciTE.exe "%A_ScriptDir%\WinScriptData\WinScriptMainCurrent.ahk"
 				break
 			}
 			;there is a global variable saved for each script added to the master script which 
@@ -216,7 +213,7 @@ JPGIncEdit:
 				{	break
 				}
 			}
-			run, edit "%tempFileName%"
+			run, %A_ProgramFiles%\Autohotkey\SciTE\SciTE.exe "%tempFileName%"
 			break
 		}		
 	}
@@ -510,7 +507,14 @@ choiceDisplay(displayList, prompt = "")
 	arrayCountGui12 := 1
 	arrayArrayGui12 := Object(1, displayList)
 	Loop,
-	{	input, oneLetterGui12, L1,{Esc}{BackSpace}{Space}{enter}
+	{	if(JPGIncInterrupt)
+		{	IfWinNotExist, JPGIncGui12
+			{	return "stop!"
+			}
+			Gui 12: Destroy
+			return "cancelled"
+		}
+		input, oneLetterGui12, L1,{Esc}{BackSpace}{Space}{enter}
 		if(ErrorLevel == "EndKey:Backspace")
 		{ 	if(StrLen(fullStringGui12) < 1)
 			{ 	continue
