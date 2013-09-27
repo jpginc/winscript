@@ -1,5 +1,5 @@
-/* This program was written by Joshua Graham joshua.graham@jpginc.com.au
- * www.jpiginc.com.au
+/* This program was written by Joshua Graham joshua.graham@jpgautomation.com
+ * www.jpgautomation.com
  * Anyone may use any part of this code for any non-malicious purpose
  * with or without referencing me. There is No Warranty 
  */
