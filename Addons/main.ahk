@@ -24,7 +24,7 @@ return
 {	KeyWait shift
 	KeyWait capslock
 	SetCapsLockState, off
-	display.show(new NewName(display))
+	display.show(new default(display))
 	return
 }
 ;if you click the mouse then your not using keyboard shortcuts so enter insert mode
