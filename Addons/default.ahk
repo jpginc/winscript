@@ -1,7 +1,7 @@
 /* This is the template to use when creating a new addon for Winscript
  */
 class default
-{	shortcutList := ""
+{	defaultShortcutList := ""
 
 	__New(controller)
 	{	global WinscriptMode
