@@ -1,3 +1,5 @@
+
+;JPGIncWinscriptFlag Start main
 /* This program was written by Joshua Graham joshua.graham@jpgautomation.com
  * www.jpgautomation.com
  * Anyone may use any part of this code for any non-malicious purpose
@@ -8,7 +10,7 @@ if not A_IsAdmin
 {	Run *RunAs "%A_ScriptFullPath%" 
 	ExitApp
 }
-display := new OnScreen(winscriptExistingShortcuts)
+display := new OnScreen()
 WinscriptMode := ""
 return
 ;Capslock + Esc always exits the program
@@ -47,9 +49,7 @@ class OnScreen
 	ignoreEsc := false
 	selectionOffput := 5
 	choiceOffput := 10
-	existingShortcuts := ""
-	
-	__New(existingShortcuts)
+	__New()
 	{	Gui splash: new
 		Gui splash: Color, White
 		height := A_Screenheight - 150
@@ -73,18 +73,7 @@ class OnScreen
 		Gui splash: add, text, x51 yp+1 BackgroundTrans h%height% w%width%
 		Gui splash: add, text, x50 yp+1 BackgroundTrans h%height% w%width%
 		Gui splash: add, text, x50 yp-1 BackgroundTrans cGreen h%height% w%width%
-		this.existingShortcuts := existingShortcuts
 		return this
-	}
-	
-	validShortcut(newShortcut)
-	{	IfInString, newShortcut, `,
-		{	return false
-		}
-		IfInString, this.existingShortcuts, % newShortcut ","
-		{	return false
-		}
-		return true
 	}
 	mouseClick()
 	{	if(this.ignoreMouseClick)
@@ -230,3 +219,31 @@ class OnScreen
 		return theString
 	}	
 }
+;JPGIncWinscriptFlag End main
+
+;JPGIncWinscriptFlag Start default
+/* This is the template to use when creating a new addon for Winscript
+ */
+class default
+{	defaultShortcutList := ""
+
+	__New(controller)
+	{	global WinscriptMode
+		MsgBox started!
+		
+		className := controller.getInput("Select script to run", StrSplit(shortcutList, ","))
+		if(className == "cancelled")
+		{	return
+		}
+		WinscriptMode .= className ","
+		if(IsObject(%className%))
+		{	new %className%(controller)
+		} else if(IsFunc(%className%))
+		{	%className%()
+		} else if(IsLabel(%className%))
+		{	gosub, %className%
+		}
+		return this
+	}
+}
+;JPGIncWinscriptFlag End default
