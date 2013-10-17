@@ -272,8 +272,7 @@ class recompiler
      *  the name of the shortcut. If blank a shortcut is not added and the file is simply appended to the running code
      */
     doAdd(filename, shortcutName = "") 
-    {
-        IfExist, % filename 
+    {   IfExist, % filename 
         {   FileRead, newCode, % filename
         } else 
         {
@@ -281,7 +280,8 @@ class recompiler
             {   FileRead, newCode, % A_ScriptDir "\addons\" filename ".ahk"
             }
         }
-        if(this.joinCode(shortcutName ? shortcutName : fileName, newCode, this.getSource(), shortcutName)) 
+		runningCode := this.getSource()
+        if(this.joinCode(shortcutName ? shortcutName : fileName, newCode, runningCode, shortcutName)) 
         {
             MsgBox, 4, JPGInc Warning, Warning adding this file will overwite existing code`nDo you want to continue?
             IfMsgBox, no 
@@ -289,14 +289,7 @@ class recompiler
                 return
             }
         }
-        if(errors := this.checkCodeSyntax(this.fullScript)) 
-        {
-            MsgBox, 4, JPGInc Error, Error adding this file causes syntax errors`nDo you want to view the errors?
-            IfMsgBox, yes 
-            {   run, errorLog.txt
-            } 
-            return
-        }
+		return this.recompile(runningCode)
     }
     
     /*
@@ -330,12 +323,12 @@ class recompiler
      */
     addShortcut(fileName, shortcutName) 
     {
-        this.doAdd(fileName, shortcutName)
+        return this.doAdd(fileName, shortcutName)
     }
     
     add(fileName) 
     {
-        this.doAdd(fileName, fileName)
+        return this.doAdd(fileName, fileName)
     }
     
     /*
@@ -348,7 +341,7 @@ class recompiler
             theEnd := RegExMatch(existingCode, "P)" this.afterFlag name "`n", length)
             existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
             existingCode := RegExReplace(existingCode, "m)""(.*)" name ",", """$1", notNeeded, 1)
-            this.recompile(existingCode)
+            return this.recompile(existingCode)
         } else 
         {
             MsgBox, , JPGInc Error, Error code segment not found in the currently running code!
@@ -358,11 +351,12 @@ class recompiler
     
     /* 
      * Updates an existing code snipit within the file
+	 * Not yet implemented
      */
     update() 
-    {
-        this.remove()
+    {	this.remove()
         this.add()
+		return
     }
     
     /*
@@ -402,19 +396,19 @@ class recompiler
     }
     
     recompile(newCode) 
-    {
-        if(A_IsCompiled) 
-        {
+    {	if(A_IsCompiled) 
+        {	return
             ;not implemented
         } else 
-        {
-            FileMove, % A_scriptfullpath, % a_scriptfullpat ".backup", 1
+        {	FileMove, % A_scriptfullpath, % a_scriptfullpath ".backup", 1
             FileAppend, % newCode, % A_scriptfullpath
             Reload
             Sleep 1000 ; If successful, the reload will close this instance during the Sleep, so the line below will never be reached.
+			FileMove, % A_scriptfullpath ".backup", % a_scriptfullpath, 1
+            FileAppend, % newCode, % A_scriptfullpath ".backup", 1
             MsgBox, 4, JPGInc ERROR, ERROR The script could not be reloaded. Would you like to open it for editing?
             IfMsgBox, Yes 
-            {   Edit
+            {   Run, % "edit """ A_scriptfullpath ".backup"""
             }
             return
         }
@@ -461,8 +455,13 @@ class add
 				{	controller.display("Select the file to load", ignoreMouseClicks := true)
 					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
 				}
-				recomp = new recompiler(controller)
-				recomp.addShortcut(dir, newShortcut)
+				recomp := new recompiler(controller)
+				MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
+				IfMsgBox Yes
+				{	recomp.addShortcut(dir, newShortcut)
+				} else 
+				{	recomp.add(dir)
+				}	
 				return
 			}
 		}
