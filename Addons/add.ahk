@@ -14,8 +14,13 @@ class add
 				{	controller.display("Select the file to load", ignoreMouseClicks := true)
 					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
 				}
-				recomp = new recompiler(controller)
-				recomp.addShortcut(dir, newShortcut)
+				recomp := new recompiler(controller)
+				MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
+				IfMsgBox Yes
+				{	recomp.addShortcut(dir, newShortcut)
+				} else 
+				{	recomp.add(dir)
+				}	
 				return
 			}
 		}
