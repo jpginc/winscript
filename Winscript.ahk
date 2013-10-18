@@ -4,7 +4,7 @@
  * with or without referencing me. There is No Warranty 
  */
  ;Do not move or remove the following line!
- winscriptExistingShortcuts := "Add,"
+ winscriptExistingShortcuts := "Add,remove,"
  
 #SingleInstance force
 if not A_IsAdmin
@@ -298,16 +298,15 @@ class recompiler
      * returns true existing code was updated
      */
     joinCode(name, newCode, ByRef existingCode, addShortcut) 
-    {	if(theStart := RegExMatch(existingCode, this.beforeFlag name "`n")) 
+    {	if(theStart := RegExMatch(existingCode, "`am)^" escapeRegex(this.beforeFlag name) "$")) 
         {
             ;we need to replace the existing code
-            theEnd := RegExMatch(existingCode, "P)" this.afterFlag name "`n", length)
+            theEnd := RegExMatch(existingCode, "P`am)^" escapeRegex(this.afterFlag name) "$", length)
             existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
         }
         if(addShortcut && ! theStart) 
-        {
-            ;need to add the shortcut
-            existingCode := RegExReplace(existingCode, "m)""(.*)""", """$1" name ",""", notNeeded, 1)
+        {   ;need to add the shortcut
+            existingCode := RegExReplace(existingCode, "`am)""(.*)""", """$1" escapeDollars(name) ",""", notNeeded, 1)
         }
         
         ;append the new code with flags
@@ -333,15 +332,13 @@ class recompiler
      */
     remove(name) {
         existingCode := this.getSource()
-        if(theStart := RegExMatch(existingCode, this.beforeFlag name "`n")) 
-        {
-            theEnd := RegExMatch(existingCode, "P)" this.afterFlag name "`n", length)
+		if(theStart := RegExMatch(existingCode, "`am)^" this.escapeRegex(this.beforeFlag name) "$")) 
+        {	theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag name) "$", length)
             existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
-            existingCode := RegExReplace(existingCode, "m)""(.*)" name ",", """$1", notNeeded, 1)
-            return this.recompile(existingCode)
+            existingCode := RegExReplace(existingCode, "m)""(.*)" this.escapeRegex(name) ",", """$1", notNeeded, 1)
+			return this.recompile(existingCode)
         } else 
-        {
-            MsgBox, , JPGInc Error, Error code segment not found in the currently running code!
+        {   MsgBox, , JPGInc Error, Error code segment not found in the currently running code!
             return
         }
     }
@@ -401,16 +398,28 @@ class recompiler
             FileAppend, % newCode, % A_scriptfullpath
             Reload
             Sleep 1000 ; If successful, the reload will close this instance during the Sleep, so the line below will never be reached.
-			FileMove, % A_scriptfullpath ".backup", % a_scriptfullpath, 1
-            FileAppend, % newCode, % A_scriptfullpath ".backup", 1
+			;FileMove, % A_scriptfullpath ".backup", % a_scriptfullpath, 1
+            ;FileAppend, % newCode, % A_scriptfullpath ".backup"
             MsgBox, 4, JPGInc ERROR, ERROR The script could not be reloaded. Would you like to open it for editing?
             IfMsgBox, Yes 
-            {   Run, % "edit """ A_scriptfullpath ".backup"""
+            {   ;Run, % "edit """ A_scriptfullpath ".backup"""
             }
             return
         }
     }
-
+	
+	doMatch(haystack, needle)
+	{	return RegExMatch(haystack, "`am)^" needle "$")
+	}
+	
+	escapeRegex(theString) 
+	{	return "\Q" RegExReplace(theString, "(\Q|\E)", "\$1") "\E"
+	}
+	
+	escapeDollars(theString)
+	{	StringReplace, theString, theString, $, $$, all
+		return theString
+	}
 }
 ;JPGIncWinscriptFlag End recompiler
 ;JPGIncWinscriptFlag Start default
@@ -466,3 +475,26 @@ class add
 	}
 }
 ;JPGIncWinscriptFlag End add
+;JPGIncWinscriptFlag Start remove
+class remove
+{	__new(controller)
+	{	while(true)
+		{	toRemove := controller.getInput("Type a shortcut name.", controller.getShortcuts())
+			if(toRemove == "cancelled")
+			{	return
+			}
+			if(! controller.validShortcut(newShortcut))
+			{	MsgBox, 4, Warning, Are you sure you wish to remove this shortcut?
+				IfMsgBox, No
+				{	return
+				}
+				r := new recompiler()
+				r.remove(toRemove)
+			} else
+			{	MsgBox, , Error, Error that shortcut does not exist
+			}
+		}
+			
+	}
+}
+;JPGIncWinscriptFlag End remove
