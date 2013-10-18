@@ -402,8 +402,8 @@ class recompiler
             FileAppend, % newCode, % A_scriptfullpath
             Reload
             Sleep 1000 ; If successful, the reload will close this instance during the Sleep, so the line below will never be reached.
+			FileMove, % A_ScriptFullPath, % A_ScriptFullPath ".failed", 1
 			FileMove, % A_scriptfullpath ".backup", % a_scriptfullpath, 1
-            FileAppend, % newCode, % A_scriptfullpath ".backup"
             MsgBox, 4, JPGInc ERROR, ERROR The script could not be reloaded. Would you like to open it for editing?
             IfMsgBox, Yes 
             {   Run, % "edit """ A_scriptfullpath ".backup""", , UseErrorLevel
