@@ -298,15 +298,15 @@ class recompiler
      * returns true existing code was updated
      */
     joinCode(name, newCode, ByRef existingCode, addShortcut) 
-    {	if(theStart := RegExMatch(existingCode, "`am)^" escapeRegex(this.beforeFlag name) "$")) 
+    {	if(theStart := RegExMatch(existingCode, "`am)^" this.escapeRegex(this.beforeFlag name) "$")) 
         {
             ;we need to replace the existing code
-            theEnd := RegExMatch(existingCode, "P`am)^" escapeRegex(this.afterFlag name) "$", length)
+            theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag name) "$", length)
             existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
         }
         if(addShortcut && ! theStart) 
         {   ;need to add the shortcut
-            existingCode := RegExReplace(existingCode, "`am)""(.*)""", """$1" escapeDollars(name) ",""", notNeeded, 1)
+            existingCode := RegExReplace(existingCode, "`am)""(.*)""", """$1" this.escapeDollars(name) ",""", notNeeded, 1)
         }
         
         ;append the new code with flags
