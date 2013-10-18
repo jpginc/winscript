@@ -298,10 +298,7 @@ class recompiler
      * returns true existing code was updated
      */
     joinCode(name, newCode, ByRef existingCode, addShortcut) 
-    {
-        
-        existingCode := SubStr(existingCode, Instr(existingCode, "`n"))
-        if(theStart := RegExMatch(existingCode, this.beforeFlag name "`n")) 
+    {	if(theStart := RegExMatch(existingCode, this.beforeFlag name "`n")) 
         {
             ;we need to replace the existing code
             theEnd := RegExMatch(existingCode, "P)" this.afterFlag name "`n", length)
