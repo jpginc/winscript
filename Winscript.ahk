@@ -402,11 +402,14 @@ class recompiler
             FileAppend, % newCode, % A_scriptfullpath
             Reload
             Sleep 1000 ; If successful, the reload will close this instance during the Sleep, so the line below will never be reached.
-			;FileMove, % A_scriptfullpath ".backup", % a_scriptfullpath, 1
-            ;FileAppend, % newCode, % A_scriptfullpath ".backup"
+			FileMove, % A_scriptfullpath ".backup", % a_scriptfullpath, 1
+            FileAppend, % newCode, % A_scriptfullpath ".backup"
             MsgBox, 4, JPGInc ERROR, ERROR The script could not be reloaded. Would you like to open it for editing?
             IfMsgBox, Yes 
-            {   ;Run, % "edit """ A_scriptfullpath ".backup"""
+            {   Run, % "edit """ A_scriptfullpath ".backup""", , UseErrorLevel
+				if(errorlevel)
+				{	run, % "notepad """ A_scriptfullpath ".backup"""
+				}
             }
             return
         }
@@ -483,12 +486,12 @@ class add
 class remove
 {	__new(controller)
 	{	while(true)
-		{	toRemove := controller.getInput("Type a shortcut name.", StrSplit(controller.getShortcuts(), ","))
+		{	toRemove := controller.getInput("Select a code segment to remove", StrSplit(controller.getShortcuts(), ","))
 			if(toRemove == "cancelled")
 			{	return
 			}
 			if(! controller.validShortcut(newShortcut))
-			{	MsgBox, 4, Warning, Are you sure you wish to remove this shortcut?
+			{	MsgBox, 4, Warning, Are you sure you wish to remove the shortcut %toRemove%?
 				IfMsgBox, No
 				{	return
 				}
@@ -498,7 +501,7 @@ class remove
 			{	MsgBox, , Error, Error that shortcut does not exist
 			}
 		}
-			
+		return this
 	}
 }
 ;JPGIncWinscriptFlag End remove
