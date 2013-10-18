@@ -134,7 +134,11 @@ class OnScreen
 		Gui splash: show, NoActivate y120, WinscriptSplash
 		return
 	}
-	
+	/*
+	 * Gets input from the user.
+	 * usage: 
+	 * getInput(message to display [, array of choices = [], ignore mouse click = false])
+	 */
 	getInput(message, params*)
 	{	;you cannot ignore the escape key when getting input
 		this.ignoreEsc := false
@@ -479,7 +483,7 @@ class add
 class remove
 {	__new(controller)
 	{	while(true)
-		{	toRemove := controller.getInput("Type a shortcut name.", controller.getShortcuts())
+		{	toRemove := controller.getInput("Type a shortcut name.", StrSplit(controller.getShortcuts(), ","))
 			if(toRemove == "cancelled")
 			{	return
 			}
