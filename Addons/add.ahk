@@ -9,17 +9,22 @@ class add
 			{	MsgBox, , Error, Error that shortcut is already in use
 			} else
 			{	IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
-				{	dir := % A_scriptdir "\Addons\" newShortcut ".ahk"
+				{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
 				} else
 				{	controller.display("Select the file to load", ignoreMouseClicks := true)
 					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
+					FileRead, newCode, % dir
+				}
+				if(! newCode)
+				{	MsgBox, , Error, Error file could not be read or was empty
+					return
 				}
 				recomp := new recompiler(controller)
 				MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
 				IfMsgBox Yes
-				{	recomp.addShortcut(dir, newShortcut)
+				{	recomp.addShortcut(newShortcut, newCode)
 				} else 
-				{	recomp.add(dir)
+				{	recomp.add(newShortcut, newCode)
 				}	
 				return
 			}

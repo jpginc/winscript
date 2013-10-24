@@ -275,19 +275,10 @@ class recompiler
      * @param shortcutName
      *  the name of the shortcut. If blank a shortcut is not added and the file is simply appended to the running code
      */
-    doAdd(filename, shortcutName = "") 
-    {   IfExist, % filename 
-        {   FileRead, newCode, % filename
-        } else 
-        {
-            IfExist, % A_ScriptDir "\addons\" filename ".ahk" 
-            {   FileRead, newCode, % A_ScriptDir "\addons\" filename ".ahk"
-            }
-        }
-		runningCode := this.getSource()
-        if(this.joinCode(shortcutName ? shortcutName : fileName, newCode, runningCode, shortcutName)) 
-        {
-            MsgBox, 4, JPGInc Warning, Warning adding this file will overwite existing code`nDo you want to continue?
+    doAdd(name, newCode, addShortcut) 
+    {   runningCode := this.getSource()
+        if(this.joinCode(name, newCode, runningCode, addShortcut)) 
+        {   MsgBox, 4, JPGInc Warning, Warning adding this file will overwite existing code`nDo you want to continue?
             IfMsgBox, no 
             {   ;this.fullScript has been changed....
                 return
@@ -317,43 +308,57 @@ class recompiler
         existingCode .= this.beforeFlag name "`n" newCode "`n" this.afterFlag name "`n"
         return theStart != 0
     }
+    
+    /*
+     * removes from the start flag of 'name' to the endflag (inclusive) from 'existingCode'
+     * returns 0 if successful
+     * returns 1 if unsuccessful
+     */
+    splitCode(name, ByRef existingCode)
+    {   if(theStart := RegExMatch(existingCode, "`am)^" this.escapeRegex(this.beforeFlag name) "$")) 
+        {	theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag name) "$", length)
+            existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
+            existingCode := RegExReplace(existingCode, "m)""(.*)" this.escapeRegex(name) ",", """$1", notNeeded, 1)
+            return 0
+        }
+        return 1
+    }
 
     /*
      * Appends the given file to the main script also adding it to the shortcut list
      */
-    addShortcut(fileName, shortcutName) 
+    addShortcut(name, newCode) 
     {
-        return this.doAdd(fileName, shortcutName)
+        return this.doAdd(name, newCode, true)
     }
     
-    add(fileName) 
+    add(name, newCode) 
     {
-        return this.doAdd(fileName, fileName)
+        return this.doAdd(name, newCode, false)
     }
     
     /*
      * Removes the code snipit from the main file
      */
-    remove(name) {
+    remove(name, update := false) {
         existingCode := this.getSource()
-		if(theStart := RegExMatch(existingCode, "`am)^" this.escapeRegex(this.beforeFlag name) "$")) 
-        {	theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag name) "$", length)
-            existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
-            existingCode := RegExReplace(existingCode, "m)""(.*)" this.escapeRegex(name) ",", """$1", notNeeded, 1)
-			return this.recompile(existingCode)
-        } else 
+        if(this.splitCode(name, existingCode))
         {   MsgBox, , JPGInc Error, Error code segment not found in the currently running code!
-            return
+            return 
         }
+        return this.recompile(existingCode)
     }
     
     /* 
      * Updates an existing code snipit within the file
 	 * Not yet implemented
      */
-    update() 
-    {	this.remove()
-        this.add()
+    update(name, newCode) 
+    {	existingCode := this.getSource()
+        if(removed := this.splitCode(name, existingCode))
+        {   this.joinCode(name, newCode, existingCode, true)
+            return this.recompile(existingCode)
+        }
 		return
     }
     
@@ -451,7 +456,6 @@ class default
 	}
 }
 ;JPGIncWinscriptFlag End default
-
 ;JPGIncWinscriptFlag Start add
 class add
 {	__new(controller)
@@ -464,17 +468,22 @@ class add
 			{	MsgBox, , Error, Error that shortcut is already in use
 			} else
 			{	IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
-				{	dir := % A_scriptdir "\Addons\" newShortcut ".ahk"
+				{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
 				} else
 				{	controller.display("Select the file to load", ignoreMouseClicks := true)
 					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
+					FileRead, newCode, % dir
+				}
+				if(! newCode)
+				{	MsgBox, , Error, Error file could not be read or was empty
+					return
 				}
 				recomp := new recompiler(controller)
 				MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
 				IfMsgBox Yes
-				{	recomp.addShortcut(dir, newShortcut)
+				{	recomp.addShortcut(newShortcut, newCode)
 				} else 
-				{	recomp.add(dir)
+				{	recomp.add(newShortcut, newCode)
 				}	
 				return
 			}

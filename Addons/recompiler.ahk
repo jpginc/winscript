@@ -27,32 +27,16 @@ class recompiler
      * @param shortcutName
      *  the name of the shortcut. If blank a shortcut is not added and the file is simply appended to the running code
      */
-    doAdd(filename, shortcutName = "") 
-    {
-        IfExist, % filename 
-        {   FileRead, newCode, % filename
-        } else 
-        {
-            IfExist, % A_ScriptDir "\addons\" filename ".ahk" 
-            {   FileRead, newCode, % A_ScriptDir "\addons\" filename ".ahk"
-            }
-        }
-        if(this.joinCode(shortcutName ? shortcutName : fileName, newCode, this.getSource(), shortcutName)) 
-        {
-            MsgBox, 4, JPGInc Warning, Warning adding this file will overwite existing code`nDo you want to continue?
+    doAdd(name, newCode, addSortcut) 
+    {   runningCode := this.getSource()
+        if(this.joinCode(name, newCode, runningCode, addShortcut)) 
+        {   MsgBox, 4, JPGInc Warning, Warning adding this file will overwite existing code`nDo you want to continue?
             IfMsgBox, no 
             {   ;this.fullScript has been changed....
                 return
             }
         }
-        if(errors := this.checkCodeSyntax(this.fullScript)) 
-        {
-            MsgBox, 4, JPGInc Error, Error adding this file causes syntax errors`nDo you want to view the errors?
-            IfMsgBox, yes 
-            {   run, errorLog.txt
-            } 
-            return
-        }
+		return this.recompile(runningCode)
     }
     
     /*
@@ -61,64 +45,73 @@ class recompiler
      * returns true existing code was updated
      */
     joinCode(name, newCode, ByRef existingCode, addShortcut) 
-    {
-        
-        existingCode := SubStr(existingCode, Instr(existingCode, "`n"))
-        if(theStart := RegExMatch(existingCode, this.beforeFlag name "`n")) 
+    {	if(theStart := RegExMatch(existingCode, "`am)^" this.escapeRegex(this.beforeFlag name) "$")) 
         {
             ;we need to replace the existing code
-            theEnd := RegExMatch(existingCode, "P)" this.afterFlag name "`n", length)
+            theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag name) "$", length)
             existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
         }
         if(addShortcut && ! theStart) 
-        {
-            ;need to add the shortcut
-            existingCode := RegExReplace(existingCode, "m)""(.*)""", """$1" name ",""", notNeeded, 1)
+        {   ;need to add the shortcut
+            existingCode := RegExReplace(existingCode, "`am)""(.*)""", """$1" this.escapeDollars(name) ",""", notNeeded, 1)
         }
         
         ;append the new code with flags
         existingCode .= this.beforeFlag name "`n" newCode "`n" this.afterFlag name "`n"
         return theStart != 0
     }
+    
+    /*
+     * removes from the start flag of 'name' to the endflag (inclusive) from 'existingCode'
+     * returns 0 if successful
+     * returns 1 if unsuccessful
+     */
+    splitCode(name, ByRef existingCode)
+    {   if(theStart := RegExMatch(existingCode, "`am)^" this.escapeRegex(this.beforeFlag name) "$")) 
+        {	theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag name) "$", length)
+            existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
+            existingCode := RegExReplace(existingCode, "m)""(.*)" this.escapeRegex(name) ",", """$1", notNeeded, 1)
+            return 0
+        }
+        return 1
+    }
 
     /*
      * Appends the given file to the main script also adding it to the shortcut list
      */
-    addShortcut(fileName, shortcutName) 
+    addShortcut(name, newCode) 
     {
-        this.doAdd(fileName, shortcutName)
+        return this.doAdd(name, newCode, true)
     }
     
-    add(fileName) 
+    add(name, newCode) 
     {
-        this.doAdd(fileName, fileName)
+        return this.doAdd(name, newCode, false)
     }
     
     /*
      * Removes the code snipit from the main file
      */
-    remove(name) {
+    remove(name, update := false) {
         existingCode := this.getSource()
-        if(theStart := RegExMatch(existingCode, this.beforeFlag name "`n")) 
-        {
-            theEnd := RegExMatch(existingCode, "P)" this.afterFlag name "`n", length)
-            existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
-            existingCode := RegExReplace(existingCode, "m)""(.*)" name ",", """$1", notNeeded, 1)
-            this.recompile(existingCode)
-        } else 
-        {
-            MsgBox, , JPGInc Error, Error code segment not found in the currently running code!
-            return
+        if(splitCode(name, existingCode)
+        {   MsgBox, , JPGInc Error, Error code segment not found in the currently running code!
+            return 
         }
+        return this.recompile(existingCode)
     }
     
     /* 
      * Updates an existing code snipit within the file
+	 * Not yet implemented
      */
-    update() 
-    {
-        this.remove()
-        this.add()
+    update(name, newCode) 
+    {	existingCode := this.getSource()
+        if(removed := this.splitCode(name, existingCode))
+        {   this.joinCode(name, newCode, existingCode, true)
+            return this.recompile(existingCode)
+        }
+		return
     }
     
     /*
@@ -158,22 +151,38 @@ class recompiler
     }
     
     recompile(newCode) 
-    {
-        if(A_IsCompiled) 
-        {
+    {	if(A_IsCompiled) 
+        {	return
             ;not implemented
         } else 
-        {
-            FileMove, % A_scriptfullpath, % a_scriptfullpat ".backup", 1
+        {	FileMove, % A_scriptfullpath, % a_scriptfullpath ".backup", 1
             FileAppend, % newCode, % A_scriptfullpath
             Reload
             Sleep 1000 ; If successful, the reload will close this instance during the Sleep, so the line below will never be reached.
+			WinClose, ahk_class #32770
+			FileMove, % A_ScriptFullPath, % A_ScriptFullPath ".failed", 1
+			FileMove, % A_scriptfullpath ".backup", % a_scriptfullpath, 1
             MsgBox, 4, JPGInc ERROR, ERROR The script could not be reloaded. Would you like to open it for editing?
             IfMsgBox, Yes 
-            {   Edit
+            {   Run, % "edit """ A_scriptfullpath ".failed""", , UseErrorLevel
+				if(errorlevel)
+				{	run, % "notepad """ A_scriptfullpath ".failed"""
+				}
             }
             return
         }
     }
-
+	
+	doMatch(haystack, needle)
+	{	return RegExMatch(haystack, "`am)^" needle "$")
+	}
+	
+	escapeRegex(theString) 
+	{	return "\Q" RegExReplace(theString, "(\Q|\E)", "\$1") "\E"
+	}
+	
+	escapeDollars(theString)
+	{	StringReplace, theString, theString, $, $$, all
+		return theString
+	}
 }

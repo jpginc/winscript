@@ -1,2 +1,2 @@
-.backup
-Winscript.ahk.backup
+*.backup
+*.failed
