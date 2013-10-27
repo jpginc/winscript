@@ -1,5 +1,7 @@
-winscriptDisplay := new OnScreen(winscriptExistingShortcuts)
-return
+main:
+{	winscriptDisplay := new OnScreen(winscriptExistingShortcuts)
+	return 
+}
 
 #If
 ;Capslock + Esc exits the program
@@ -64,7 +66,9 @@ class OnScreen
 		Gui splash: add, text, x51 yp+1 BackgroundTrans h%height% w%width%
 		Gui splash: add, text, x50 yp+1 BackgroundTrans h%height% w%width%
 		Gui splash: add, text, x50 yp-1 BackgroundTrans cGreen h%height% w%width%
-		this.existingShortcuts := existingShortcuts
+		shortcutArray := StrSplit(existingShortcuts, "|")
+		this.existingShortcuts := shortcutArray[1]
+		this.hiddenShortcuts := shortcutArray[2]
 		return this
 	}
 	
@@ -72,12 +76,20 @@ class OnScreen
 	{	return this.existingShortcuts
 	}
 	
+	getAllShortcuts()
+	{	return this.existingShortcuts "," this.hiddenShortcuts
+	}
+	
 	validShortcut(newShortcut)
 	{	IfInString, newShortcut, `,
 		{	return false
 		}
 		existingShortcuts := this.existingShortcuts
+		hiddenShortcuts := this.hiddenShortcuts
 		IfInString, existingShortcuts, % newShortcut ","
+		{	return false
+		}
+		IfInString,hiddenShortcuts, % newShortcut ","
 		{	return false
 		}
 		return true

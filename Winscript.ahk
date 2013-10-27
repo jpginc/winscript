@@ -4,7 +4,7 @@
  * with or without referencing me. There is No Warranty 
  */
  ;Do not move or remove the following line!
- winscriptExistingShortcuts := "remove,update,Add,|main,recompiler,default,test,"
+ winscriptExistingShortcuts := "Add,remove,update,|main,recompiler,default,"
  
 #SingleInstance force
 if not A_IsAdmin
@@ -488,69 +488,11 @@ class default
 }
 ;JPGIncWinscriptFlag End default
 
-;JPGIncWinscriptFlag Start remove
-class remove
-{	__new(controller)
-	{	while(true)
-		{	toRemove := controller.getInput("Select a code segment to remove", StrSplit(controller.getShortcuts(), ","))
-			if(toRemove == "cancelled")
-			{	return
-			}
-			if(! controller.validShortcut(newShortcut))
-			{	MsgBox, 4, Warning, Are you sure you wish to remove the shortcut %toRemove%?
-				IfMsgBox, No
-				{	return
-				}
-				r := new recompiler()
-				r.remove(toRemove)
-			} else
-			{	MsgBox, , Error, Error that shortcut does not exist
-			}
-		}
-		return this
-	}
-}
-;JPGIncWinscriptFlag End remove
 
 
 
-;JPGIncWinscriptFlag Start update
-class update
-{	__new(controller)
-	{	while(true)
-		{	toUpdate := controller.getInput("Select a code segment to update", StrSplit(controller.getShortcuts(), ","))
-			if(toUpdate == "cancelled")
-			{	return
-			}
-			if(! controller.validShortcut(newShortcut))
-			{	IfExist, % A_scriptdir "\Addons\" toUpdate ".ahk"
-				{	FileRead, newCode, % A_ScriptDir "\Addons\" toUpdate ".ahk"
-				} else
-				{	controller.display("Select the file to load", ignoreMouseClicks := true)
-					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
-					if(errorlevel)
-					{	return ;the user cancelled
-					}
-					FileRead, newCode, % dir
-				}
-				if(! newCode)
-				{	MsgBox, , Error, Error file could not be read or was empty
-					return
-				}
-				MsgBox, 4, Warning, Are you sure you wish to update the shortcut %toUpdate%?
-				IfMsgBox, No
-				{	return
-				}
-				r := new recompiler()
-				r.update(toUpdate, newCode)
-			} else
-			{	MsgBox, , Error, Error that shortcut does not exist
-			}
-		}
-		return this
-	}
-}
-;JPGIncWinscriptFlag End update
+
+
 ;JPGIncWinscriptFlag Start Add
 class add
 {	__new(controller)
@@ -594,10 +536,64 @@ class add
 
 
 
-;JPGIncWinscriptFlag Start test
-test()
-{
-MsgBox test
-return	
+
+;JPGIncWinscriptFlag Start remove
+class remove
+{	__new(controller)
+	{	while(true)
+		{	toRemove := controller.getInput("Select a code segment to remove", StrSplit(controller.getAllShortcuts(), ","))
+			if(toRemove == "cancelled")
+			{	return
+			}
+			if(! controller.validShortcut(newShortcut))
+			{	MsgBox, 4, Warning, Are you sure you wish to remove the shortcut %toRemove%?
+				IfMsgBox, No
+				{	return
+				}
+				r := new recompiler()
+				r.remove(toRemove)
+			} else
+			{	MsgBox, , Error, Error that shortcut does not exist
+			}
+		}
+		return this
+	}
 }
-;JPGIncWinscriptFlag End test
+;JPGIncWinscriptFlag End remove
+;JPGIncWinscriptFlag Start update
+class update
+{	__new(controller)
+	{	while(true)
+		{	toUpdate := controller.getInput("Select a code segment to update", StrSplit(controller.getAllShortcuts(), ","))
+			if(toUpdate == "cancelled")
+			{	return
+			}
+			if(! controller.validShortcut(newShortcut))
+			{	IfExist, % A_scriptdir "\Addons\" toUpdate ".ahk"
+				{	FileRead, newCode, % A_ScriptDir "\Addons\" toUpdate ".ahk"
+				} else
+				{	controller.display("Select the file to load", ignoreMouseClicks := true)
+					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
+					if(errorlevel)
+					{	return ;the user cancelled
+					}
+					FileRead, newCode, % dir
+				}
+				if(! newCode)
+				{	MsgBox, , Error, Error file could not be read or was empty
+					return
+				}
+				MsgBox, 4, Warning, Are you sure you wish to update the shortcut %toUpdate%?
+				IfMsgBox, No
+				{	return
+				}
+				r := new recompiler()
+				r.update(toUpdate, newCode)
+			} else
+			{	MsgBox, , Error, Error that shortcut does not exist
+			}
+		}
+		return this
+	}
+}
+;JPGIncWinscriptFlag End update
