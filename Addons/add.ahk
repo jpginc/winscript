@@ -13,6 +13,9 @@ class add
 				} else
 				{	controller.display("Select the file to load", ignoreMouseClicks := true)
 					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
+					if(errorlevel)
+					{	return ;the user cancelled
+					}
 					FileRead, newCode, % dir
 				}
 				if(! newCode)

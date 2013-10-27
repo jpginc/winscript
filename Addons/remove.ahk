@@ -1,7 +1,7 @@
 ﻿class remove
 {	__new(controller)
 	{	while(true)
-		{	toRemove := controller.getInput("Select a code segment to remove", StrSplit(controller.getShortcuts(), ","))
+		{	toRemove := controller.getInput("Select a code segment to remove", StrSplit(controller.getAllShortcuts(), ","))
 			if(toRemove == "cancelled")
 			{	return
 			}

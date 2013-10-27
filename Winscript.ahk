@@ -4,16 +4,20 @@
  * with or without referencing me. There is No Warranty 
  */
  ;Do not move or remove the following line!
- winscriptExistingShortcuts := "Add,remove,"
+ winscriptExistingShortcuts := "remove,update,Add,|main,recompiler,default,test,"
  
 #SingleInstance force
 if not A_IsAdmin
 {	Run *RunAs "%A_ScriptFullPath%" 
 	ExitApp
 }
-;JPGIncWinscriptFlag Start main
-winscriptDisplay := new OnScreen(winscriptExistingShortcuts)
+gosub main
 return
+;JPGIncWinscriptFlag Start main
+main:
+{	winscriptDisplay := new OnScreen(winscriptExistingShortcuts)
+	return 
+}
 
 #If
 ;Capslock + Esc exits the program
@@ -78,7 +82,9 @@ class OnScreen
 		Gui splash: add, text, x51 yp+1 BackgroundTrans h%height% w%width%
 		Gui splash: add, text, x50 yp+1 BackgroundTrans h%height% w%width%
 		Gui splash: add, text, x50 yp-1 BackgroundTrans cGreen h%height% w%width%
-		this.existingShortcuts := existingShortcuts
+		shortcutArray := StrSplit(existingShortcuts, "|")
+		this.existingShortcuts := shortcutArray[1]
+		this.hiddenShortcuts := shortcutArray[2]
 		return this
 	}
 	
@@ -86,12 +92,20 @@ class OnScreen
 	{	return this.existingShortcuts
 	}
 	
+	getAllShortcuts()
+	{	return this.existingShortcuts "," this.hiddenShortcuts
+	}
+	
 	validShortcut(newShortcut)
 	{	IfInString, newShortcut, `,
 		{	return false
 		}
 		existingShortcuts := this.existingShortcuts
+		hiddenShortcuts := this.hiddenShortcuts
 		IfInString, existingShortcuts, % newShortcut ","
+		{	return false
+		}
+		IfInString,hiddenShortcuts, % newShortcut ","
 		{	return false
 		}
 		return true
@@ -126,12 +140,25 @@ class OnScreen
 		{	this.ignoreMouseClick := params[1]
 			this.ignoreEsc := params.maxIndex() > 1 ? params[2] : false
 		}
+		;clear the previous choices
+		loop, 5
+		{	GuiControl, splash:text, % "static" A_index + this.selectionOffput, 
+			GuiControl, splash:text, % "static" A_index + this.choiceOffput, 
+		}
 		Loop, 5
 		{	GuiControl, splash:text, static%A_index%, % message
 		}
 		Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu 
 		WinSet, TransColor, white
 		Gui splash: show, NoActivate y120, WinscriptSplash
+		return
+	}
+	
+	/*
+	 * clear the display
+	 */
+	clear()
+	{	this.hide()
 		return
 	}
 	/*
@@ -299,9 +326,10 @@ class recompiler
             theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag name) "$", length)
             existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
         }
-        if(addShortcut && ! theStart) 
-        {   ;need to add the shortcut
-            existingCode := RegExReplace(existingCode, "`am)""(.*)""", """$1" this.escapeDollars(name) ",""", notNeeded, 1)
+        if(! theStart) 
+        {   delim := addShortcut ? "|" : ""
+			;need to add the shortcut
+            existingCode := RegExReplace(existingCode, "`am)""(.*)" this.escapeRegex(delim) "(.*)""", """$1" this.escapeDollars(name) "," delim "$2""", notNeeded, 1)
         }
         
         ;append the new code with flags
@@ -355,11 +383,14 @@ class recompiler
      */
     update(name, newCode) 
     {	existingCode := this.getSource()
-        if(removed := this.splitCode(name, existingCode))
-        {   this.joinCode(name, newCode, existingCode, true)
-            return this.recompile(existingCode)
-        }
-		return
+        if(this.splitCode(name, existingCode))
+        {   MsgBox, 4, JPGInc Warning, Warning existing code was not found (or removed) do you wish to continue?
+			IfMsgBox No
+			{	return
+			}
+		}
+		this.joinCode(name, newCode, existingCode, true)
+		return this.recompile(existingCode)
     }
     
     /*
@@ -420,13 +451,13 @@ class recompiler
             return
         }
     }
-	
+
 	doMatch(haystack, needle)
 	{	return RegExMatch(haystack, "`am)^" needle "$")
 	}
 	
 	escapeRegex(theString) 
-	{	return "\Q" RegExReplace(theString, "(\Q|\E)", "\$1") "\E"
+	{	return "\Q" theString "\E"
 	}
 	
 	escapeDollars(theString)
@@ -444,54 +475,19 @@ class default
 		if(className == "cancelled")
 		{	return
 		}
-		WinscriptMode .= className ","
+		WinscriptMode := className
 		if(IsObject(%className%))
 		{	new %className%(controller)
-		} else if(IsFunc(%className%))
+		} else if(IsFunc(className))
 		{	%className%()
-		} else if(IsLabel(%className%))
+		} else if(IsLabel(className))
 		{	gosub, %className%
 		}
 		return this
 	}
 }
 ;JPGIncWinscriptFlag End default
-;JPGIncWinscriptFlag Start add
-class add
-{	__new(controller)
-	{	while(true)
-		{	newShortcut := controller.getInput("Type a shortcut name.")
-			if(newShortcut == "cancelled")
-			{	return
-			}
-			if(! controller.validShortcut(newShortcut))
-			{	MsgBox, , Error, Error that shortcut is already in use
-			} else
-			{	IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
-				{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
-				} else
-				{	controller.display("Select the file to load", ignoreMouseClicks := true)
-					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
-					FileRead, newCode, % dir
-				}
-				if(! newCode)
-				{	MsgBox, , Error, Error file could not be read or was empty
-					return
-				}
-				recomp := new recompiler(controller)
-				MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
-				IfMsgBox Yes
-				{	recomp.addShortcut(newShortcut, newCode)
-				} else 
-				{	recomp.add(newShortcut, newCode)
-				}	
-				return
-			}
-		}
-			
-	}
-}
-;JPGIncWinscriptFlag End add
+
 ;JPGIncWinscriptFlag Start remove
 class remove
 {	__new(controller)
@@ -515,3 +511,93 @@ class remove
 	}
 }
 ;JPGIncWinscriptFlag End remove
+
+
+
+;JPGIncWinscriptFlag Start update
+class update
+{	__new(controller)
+	{	while(true)
+		{	toUpdate := controller.getInput("Select a code segment to update", StrSplit(controller.getShortcuts(), ","))
+			if(toUpdate == "cancelled")
+			{	return
+			}
+			if(! controller.validShortcut(newShortcut))
+			{	IfExist, % A_scriptdir "\Addons\" toUpdate ".ahk"
+				{	FileRead, newCode, % A_ScriptDir "\Addons\" toUpdate ".ahk"
+				} else
+				{	controller.display("Select the file to load", ignoreMouseClicks := true)
+					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
+					if(errorlevel)
+					{	return ;the user cancelled
+					}
+					FileRead, newCode, % dir
+				}
+				if(! newCode)
+				{	MsgBox, , Error, Error file could not be read or was empty
+					return
+				}
+				MsgBox, 4, Warning, Are you sure you wish to update the shortcut %toUpdate%?
+				IfMsgBox, No
+				{	return
+				}
+				r := new recompiler()
+				r.update(toUpdate, newCode)
+			} else
+			{	MsgBox, , Error, Error that shortcut does not exist
+			}
+		}
+		return this
+	}
+}
+;JPGIncWinscriptFlag End update
+;JPGIncWinscriptFlag Start Add
+class add
+{	__new(controller)
+	{	while(true)
+		{	newShortcut := controller.getInput("Type a shortcut name.")
+			if(newShortcut == "cancelled")
+			{	return
+			}
+			if(! controller.validShortcut(newShortcut))
+			{	MsgBox, , Error, Error that shortcut is already in use
+			} else
+			{	IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
+				{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
+				} else
+				{	controller.display("Select the file to load", ignoreMouseClicks := true)
+					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
+					if(errorlevel)
+					{	controller.clear()
+						return ;the user cancelled
+					}
+					FileRead, newCode, % dir
+				}
+				if(! newCode)
+				{	MsgBox, , Error, Error file could not be read or was empty
+					return
+				}
+				recomp := new recompiler(controller)
+				MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
+				IfMsgBox Yes
+				{	recomp.addShortcut(newShortcut, newCode)
+				} else 
+				{	recomp.add(newShortcut, newCode)
+				}	
+				return
+			}
+		}
+			
+	}
+}
+;JPGIncWinscriptFlag End Add
+
+
+
+;JPGIncWinscriptFlag Start test
+test()
+{
+MsgBox test
+return	
+}
+;JPGIncWinscriptFlag End test

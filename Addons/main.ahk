@@ -1,17 +1,8 @@
-/* This program was written by Joshua Graham joshua.graham@jpgautomation.com
- * www.jpgautomation.com
- * Anyone may use any part of this code for any non-malicious purpose
- * with or without referencing me. There is No Warranty 
- */
-#SingleInstance force
-if not A_IsAdmin
-{	Run *RunAs "%A_ScriptFullPath%" 
-	ExitApp
-}
-display := new OnScreen(winscriptExistingShortcuts)
-WinscriptMode := ""
+winscriptDisplay := new OnScreen(winscriptExistingShortcuts)
 return
-;Capslock + Esc always exits the program
+
+#If
+;Capslock + Esc exits the program
 ~CapsLock & Esc::
 ~Esc & CapsLock::
 {	SetCapsLockState, off
@@ -24,18 +15,18 @@ return
 {	KeyWait shift
 	KeyWait capslock
 	SetCapsLockState, off
-	display.show(new default(display))
+	winscriptDisplay.show(new default(winscriptDisplay))
 	return
 }
 ;if you click the mouse then your not using keyboard shortcuts so enter insert mode
 ~LButton::
 ~RButton::
 ~MButton::
-{	display.mouseClick()
+{	winscriptDisplay.mouseClick()
 	return
 }
 ~Esc::
-{	display.esc()
+{	winscriptDisplay.esc()
 	return
 }
 
@@ -77,11 +68,16 @@ class OnScreen
 		return this
 	}
 	
+	getShortcuts() 
+	{	return this.existingShortcuts
+	}
+	
 	validShortcut(newShortcut)
 	{	IfInString, newShortcut, `,
 		{	return false
 		}
-		IfInString, this.existingShortcuts, % newShortcut ","
+		existingShortcuts := this.existingShortcuts
+		IfInString, existingShortcuts, % newShortcut ","
 		{	return false
 		}
 		return true
@@ -116,6 +112,11 @@ class OnScreen
 		{	this.ignoreMouseClick := params[1]
 			this.ignoreEsc := params.maxIndex() > 1 ? params[2] : false
 		}
+		;clear the previous choices
+		loop, 5
+		{	GuiControl, splash:text, % "static" A_index + this.selectionOffput, 
+			GuiControl, splash:text, % "static" A_index + this.choiceOffput, 
+		}
 		Loop, 5
 		{	GuiControl, splash:text, static%A_index%, % message
 		}
@@ -125,6 +126,18 @@ class OnScreen
 		return
 	}
 	
+	/*
+	 * clear the display
+	 */
+	clear()
+	{	this.hide()
+		return
+	}
+	/*
+	 * Gets input from the user.
+	 * usage: 
+	 * getInput(message to display [, array of choices = [], ignore mouse click = false])
+	 */
 	getInput(message, params*)
 	{	;you cannot ignore the escape key when getting input
 		this.ignoreEsc := false

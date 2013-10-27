@@ -27,7 +27,7 @@ class recompiler
      * @param shortcutName
      *  the name of the shortcut. If blank a shortcut is not added and the file is simply appended to the running code
      */
-    doAdd(name, newCode, addSortcut) 
+    doAdd(name, newCode, addShortcut) 
     {   runningCode := this.getSource()
         if(this.joinCode(name, newCode, runningCode, addShortcut)) 
         {   MsgBox, 4, JPGInc Warning, Warning adding this file will overwite existing code`nDo you want to continue?
@@ -94,7 +94,7 @@ class recompiler
      */
     remove(name, update := false) {
         existingCode := this.getSource()
-        if(splitCode(name, existingCode)
+        if(this.splitCode(name, existingCode))
         {   MsgBox, , JPGInc Error, Error code segment not found in the currently running code!
             return 
         }
@@ -107,11 +107,14 @@ class recompiler
      */
     update(name, newCode) 
     {	existingCode := this.getSource()
-        if(removed := this.splitCode(name, existingCode))
-        {   this.joinCode(name, newCode, existingCode, true)
-            return this.recompile(existingCode)
-        }
-		return
+        if(this.splitCode(name, existingCode))
+        {   MsgBox, 4, JPGInc Warning, Warning existing code was not found (or removed) do you wish to continue?
+			IfMsgBox No
+			{	return
+			}
+		}
+		this.joinCode(name, newCode, existingCode, true)
+		return this.recompile(existingCode)
     }
     
     /*
