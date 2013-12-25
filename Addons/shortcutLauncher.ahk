@@ -1,4 +1,3 @@
-;JPGIncWinscriptFlag Start shortcutLauncher
 /* This is the class that will be loaded when entering script mode 
  * Displays a list of shorcuts to choose from
  */
@@ -10,11 +9,14 @@ shortcutLauncher(controller)
 	controller.setContext(className)
 	if(IsObject(%className%))
 	{	new %className%(controller)
-	} else if(IsFunc(className))
-	{	%className%()
+	} else if((argCount := IsFunc(className)))
+	{	if(argCount == 1)
+		{	%className%()
+		} else
+		{	%className%(controller)
+		}
 	} else if(IsLabel(className))
 	{	gosub, %className%
 	}
 	return
 }
-;JPGIncWinscriptFlag End shortcutLauncher

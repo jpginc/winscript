@@ -1,5 +1,4 @@
-﻿;JPGIncWinscriptFlag Start display
-/* A class that is able to display a message and/or present a list of items 
+﻿/* A class that is able to display a message and/or present a list of items 
  * for the user to select from
  */
 class OnScreen
@@ -255,4 +254,3 @@ class OnScreen
 		return theString
 	}	
 }
-;JPGIncWinscriptFlag End display

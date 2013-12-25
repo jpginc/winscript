@@ -1,5 +1,4 @@
-﻿;JPGIncWinscriptFlag Start controller
-class Controller
+﻿class Controller
 {	display := new OnScreen(this)
 	context := ""
 	shortcuts := ""
@@ -9,7 +8,7 @@ class Controller
 	__new(shortcuts, codeSegments)
 	{	this.shortcuts := StrSplit(shortcuts, ",")
 		this.codeSegments := StrSplit(codeSegments, ",")
-		this.allShortcuts := StrSplit(shortcuts ","allShortcuts, ",")
+		this.allShortcuts := StrSplit(shortcuts "," codeSegments, ",")
 		return this
 	}
 	
@@ -30,7 +29,7 @@ class Controller
 	{	return this.display.showMessage(message, params)
 	}
 	clearDisplay()
-	{	return this.display.clear()
+	{	return this.display.hide()
 	}
 	getChoice(choices, message := "", params*)
 	{	return this.display.getChoice(choices, message, params)
@@ -95,5 +94,3 @@ class Controller
 		return false
 	}
 }
-
-;JPGIncWinscriptFlag End controller

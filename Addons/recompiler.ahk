@@ -1,4 +1,3 @@
-;JPGIncWinscriptFlag Start recompiler
 class recompiler
 {
 
@@ -43,18 +42,20 @@ class recompiler
      * returns false if the code was added without removing existing code
      * returns true existing code was updated
      */
-    joinCode(name, newCode, ByRef existingCode, addShortcut) 
+    joinCode(name, newCode, ByRef existingCode, addShortcut, isUpdate := false) 
     {	if(theStart := RegExMatch(existingCode, "`am)^" this.escapeRegex(this.beforeFlag name) "$")) 
-        {
-            ;we need to replace the existing code
+        {   ;we need to replace the existing code
+            MsgBox % "here " theStart
             theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag name) "$", length)
             existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
         }
-        if(addShortcut && ! theStart) 
-        {   ;need to add the shortcut
-            existingCode := RegExReplace(existingCode, "`am)^JPGIncShortcuts := ""(.*)""", "JPGIncShortcuts := ""$1" this.escapeDollars(name) ",""", notNeeded, 1)
-        } else if (! theStart)
-        {   existingCode := RegExReplace(existingCode, "`am)^JPGIncCodeSegments := ""(.*)""", "JPGIncCodeSegments := ""$1" this.escapeDollars(name) ",""", notNeeded, 1)
+        if(! isUpdate)
+        {   if(addShortcut && ! theStart) 
+            {   ;need to add the shortcut
+                existingCode := RegExReplace(existingCode, "`am)^JPGIncShortcuts := ""(.*)""", "JPGIncShortcuts := ""$1" this.escapeDollars(name) ",""", notNeeded, 1)
+            } else if (! theStart)
+            {   existingCode := RegExReplace(existingCode, "`am)^JPGIncCodeSegments := ""(.*)""", "JPGIncCodeSegments := ""$1" this.escapeDollars(name) ",""", notNeeded, 1)
+            }
         }
         if(name == "autoExecute")
         {   theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag "shortcutNames") "$", length)
@@ -74,11 +75,14 @@ class recompiler
      * returns 0 if successful
      * returns 1 if unsuccessful
      */
-    splitCode(name, ByRef existingCode)
+    splitCode(name, ByRef existingCode, deleteShortcut := false)
     {   if(theStart := RegExMatch(existingCode, "`am)^" this.escapeRegex(this.beforeFlag name) "$")) 
         {	theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag name) "$", length)
             existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
-            existingCode := RegExReplace(existingCode, "m)""(.*)" this.escapeRegex(name) ",", """$1", notNeeded, 1)
+            existingCode := RegExReplace(existingCode, "\R\R", "`r`n")
+            if(deleteShortcut)
+            {   existingCode := RegExReplace(existingCode, "m)""(.*)" this.escapeRegex(name) ",", """$1", notNeeded, 1)
+            }
             return 0
         }
         return 1
@@ -100,7 +104,7 @@ class recompiler
      */
     remove(name, update := false) 
     {   existingCode := this.getSource()
-        if(this.splitCode(name, existingCode))
+        if(this.splitCode(name, existingCode, deleteShortcut := true))
         {   MsgBox, , JPGInc Error, Error code segment not found in the currently running code!
             return 
         }
@@ -119,7 +123,7 @@ class recompiler
 			{	return
 			}
 		}
-		this.joinCode(name, newCode, existingCode, true)
+		this.joinCode(name, newCode, existingCode, addShortcut := false, isUpdate := true)
 		return this.recompile(existingCode)
     }
     
@@ -195,4 +199,3 @@ class recompiler
 		return theString
 	}
 }
-;JPGIncWinscriptFlag End recompiler

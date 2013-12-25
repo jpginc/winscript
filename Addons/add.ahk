@@ -1,4 +1,3 @@
-;JPGIncWinscriptFlag Start add
 class add
 {	__new(controller)
 	{	while(true)
@@ -12,11 +11,13 @@ class add
 			{	IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
 				{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
 				} else
-				{	controller.display("Select the file to load", ignoreMouseClicks := true)
+				{	controller.showMessage("Select the file to load", ignoreMouseClicks := true)
 					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
 					if(errorlevel)
-					{	return ;the user cancelled
+					{	controller.clearDisplay()
+						return ;the user cancelled
 					}
+					controller.clearDisplay()
 					FileRead, newCode, % dir
 				}
 				if(! newCode)
@@ -36,4 +37,3 @@ class add
 			
 	}
 }
-;JPGIncWinscriptFlag End add
