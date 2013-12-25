@@ -71,7 +71,7 @@ class OnScreen
 		{	GuiControl, splash:text, % "static" A_index + this.selectionOffput, % selection
 			GuiControl, splash:text, % "static" A_index + this.choiceOffput, % choices
 		}
-		Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu 
+		Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu +Owner
 		WinSet, TransColor, white
 		Gui splash: show, NoActivate y120, WinscriptSplash
 		this.guiVisible := true
