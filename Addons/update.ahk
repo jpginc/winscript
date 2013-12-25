@@ -1,7 +1,7 @@
 ﻿class update
 {	__new(controller)
 	{	while(true)
-		{	toUpdate := controller.getInput("Select a code segment to update", StrSplit(controller.getAllShortcuts(), ","))
+		{	toUpdate := controller.getChoice(controller.getAllShortcuts(), "Select a code segment to update")
 			if(toUpdate == "cancelled")
 			{	return
 			}

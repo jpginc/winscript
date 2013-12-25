@@ -1,3 +1,4 @@
+;JPGIncWinscriptFlag Start recompiler
 class recompiler
 {
 
@@ -9,13 +10,12 @@ class recompiler
     }
     
     getRunningCode() 
-    {
-        if(A_IsCompiled) 
-        {
+    {   if(A_IsCompiled) 
+        {   MsgBox, , ERROR, ERROR Cannot edit this script because it is already compiled!
+            return ""
         ;not yet implemented
         } else 
-        {
-            FileRead, fullScript, % A_ScriptFullPath
+        {   FileRead, fullScript, % A_ScriptFullPath
         }
         return fullScript
     }
@@ -32,8 +32,7 @@ class recompiler
         if(this.joinCode(name, newCode, runningCode, addShortcut)) 
         {   MsgBox, 4, JPGInc Warning, Warning adding this file will overwite existing code`nDo you want to continue?
             IfMsgBox, no 
-            {   ;this.fullScript has been changed....
-                return
+            {   return
             }
         }
 		return this.recompile(runningCode)
@@ -53,11 +52,20 @@ class recompiler
         }
         if(addShortcut && ! theStart) 
         {   ;need to add the shortcut
-            existingCode := RegExReplace(existingCode, "`am)""(.*)""", """$1" this.escapeDollars(name) ",""", notNeeded, 1)
+            existingCode := RegExReplace(existingCode, "`am)^JPGIncShortcuts := ""(.*)""", "JPGIncShortcuts := ""$1" this.escapeDollars(name) ",""", notNeeded, 1)
+        } else if (! theStart)
+        {   existingCode := RegExReplace(existingCode, "`am)^JPGIncCodeSegments := ""(.*)""", "JPGIncCodeSegments := ""$1" this.escapeDollars(name) ",""", notNeeded, 1)
         }
-        
-        ;append the new code with flags
-        existingCode .= this.beforeFlag name "`n" newCode "`n" this.afterFlag name "`n"
+        if(name == "autoExecute")
+        {   theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag "shortcutNames") "$", length)
+            shortcutNames := SubStr(existingCode, 1, theEnd + length)
+            otherCode := SubStr(existingCode, theEnd + length)
+            ;special case where the code has to be added to the start of the script but after the shortcutNames section
+            existingCode := shortcutNames "`n" this.beforeFlag name "`n" newCode "`n" this.afterFlag name "`n" otherCode
+        } else
+        {   ;append the new code with flags
+            existingCode .= "`n" this.beforeFlag name "`n" newCode "`n" this.afterFlag name "`n"
+        }
         return theStart != 0
     }
     
@@ -80,20 +88,18 @@ class recompiler
      * Appends the given file to the main script also adding it to the shortcut list
      */
     addShortcut(name, newCode) 
-    {
-        return this.doAdd(name, newCode, true)
+    {   return this.doAdd(name, newCode, true)
     }
     
     add(name, newCode) 
-    {
-        return this.doAdd(name, newCode, false)
+    {   return this.doAdd(name, newCode, false)
     }
     
     /*
      * Removes the code snipit from the main file
      */
-    remove(name, update := false) {
-        existingCode := this.getSource()
+    remove(name, update := false) 
+    {   existingCode := this.getSource()
         if(this.splitCode(name, existingCode))
         {   MsgBox, , JPGInc Error, Error code segment not found in the currently running code!
             return 
@@ -167,7 +173,7 @@ class recompiler
 			FileMove, % A_scriptfullpath ".backup", % a_scriptfullpath, 1
             MsgBox, 4, JPGInc ERROR, ERROR The script could not be reloaded. Would you like to open it for editing?
             IfMsgBox, Yes 
-            {   Run, % "edit """ A_scriptfullpath ".failed""", , UseErrorLevel
+            {   Run, edit "%A_scriptfullpath%.failed", , UseErrorLevel
 				if(errorlevel)
 				{	run, % "notepad """ A_scriptfullpath ".failed"""
 				}
@@ -189,3 +195,4 @@ class recompiler
 		return theString
 	}
 }
+;JPGIncWinscriptFlag End recompiler

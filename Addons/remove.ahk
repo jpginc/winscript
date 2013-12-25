@@ -1,12 +1,16 @@
 ﻿class remove
 {	__new(controller)
 	{	while(true)
-		{	toRemove := controller.getInput("Select a code segment to remove", StrSplit(controller.getAllShortcuts(), ","))
+		{	toRemove := controller.getChoice(controller.getAllShortcuts(), "Select a code segment/shortcut to remove")
 			if(toRemove == "cancelled")
 			{	return
 			}
-			if(! controller.validShortcut(newShortcut))
-			{	MsgBox, 4, Warning, Are you sure you wish to remove the shortcut %toRemove%?
+			if(toRemove == "autoExecute")
+			{	MsgBox, , ERROR, Error you cannot remove the autoExecute section. Use edit/update instead
+				return
+			}
+			if(controller.codeOrShortcutExists(toRemove))
+			{	MsgBox, 4, Warning, Are you sure you wish to remove the code segment %toRemove%?
 				IfMsgBox, No
 				{	return
 				}

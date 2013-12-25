@@ -1,3 +1,4 @@
+;JPGIncWinscriptFlag Start add
 class add
 {	__new(controller)
 	{	while(true)
@@ -5,8 +6,8 @@ class add
 			if(newShortcut == "cancelled")
 			{	return
 			}
-			if(! controller.validShortcut(newShortcut))
-			{	MsgBox, , Error, Error that shortcut is already in use
+			if(! controller.isValidShortcut(newShortcut))
+			{	MsgBox, , Error, Error that shortcut is invalid or already in use
 			} else
 			{	IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
 				{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
@@ -35,3 +36,4 @@ class add
 			
 	}
 }
+;JPGIncWinscriptFlag End add
