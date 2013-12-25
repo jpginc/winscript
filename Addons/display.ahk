@@ -9,6 +9,8 @@ class OnScreen
 	ignoreMouseClick := false
 	ignoreEsc := false
 	controller := ""
+	guiVisible := false
+	waitingForInput := false
 	
 	/* 
 	 * Creates a gui 
@@ -45,9 +47,6 @@ class OnScreen
 	{	if(this.ignoreMouseClick)
 		{	return
 		}
-		IfWinExist, WinscriptSplash
-		{	send {esc}
-		}
 		return this.hide()
 	}
 	
@@ -75,6 +74,7 @@ class OnScreen
 		Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu 
 		WinSet, TransColor, white
 		Gui splash: show, NoActivate y120, WinscriptSplash
+		this.guiVisible := true
 		return
 	}
 	
@@ -82,8 +82,15 @@ class OnScreen
 	 * clear the display
 	 */
 	hide()
-	{	this.display("","","")
-		Gui splash: hide
+	{	if(this.waitingForInput)
+		{	send {esc}
+			return
+		}
+		if(this.guiVisible)
+		{	this.display("","","")
+			Gui splash: hide
+			this.guiVisible := false
+		}
 		return
 	}
 	
@@ -235,7 +242,9 @@ class OnScreen
 	 * takes a string and returns that string with the next character appeneded to it
 	 */
 	getNextChar()
-	{	input, oneChar, L1,{Esc}{BackSpace}{enter}
+	{	this.waitingForInput := true
+		input, oneChar, L1,{Esc}{BackSpace}{enter}
+		this.waitingForInput := false
 		if(ErrorLevel == "EndKey:Backspace")
 		{ 	return "backspace"
 		} else if(ErrorLevel == "EndKey:Escape")
