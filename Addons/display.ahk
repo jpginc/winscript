@@ -6,6 +6,7 @@ class OnScreen
 	choiceOffput := 10
 	fillColor := "Green"
 	strokeColor := "Yellow"
+	fontSize := 25
 	ignoreMouseClick := false
 	ignoreEsc := false
 	controller := ""
@@ -20,7 +21,7 @@ class OnScreen
 		Gui splash: Color, White
 		height := A_Screenheight - 150
 		width := A_ScreenWidth - 200
-		Gui splash: font, % "s18 bold c" this.strokeColor, TimesNewRoman 
+		Gui splash: font, % "s" this.fontSize "bold c" this.strokeColor, TimesNewRoman 
 		;for the message
 		Gui splash: add, text, x1 y2 Center BackgroundTrans h%height% w%width%
 		Gui splash: add, text, x2 y1 Center BackgroundTrans h%height% w%width%
