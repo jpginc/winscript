@@ -249,7 +249,7 @@ class OnScreen
 	 */
 	getNextChar()
 	{	this.waitingForInput := true
-		input, oneChar, L1,{Esc}{BackSpace}{enter}{tab}
+		input, oneChar, L1,{Esc}{BackSpace}{enter}{tab}{Lalt}{RAlt}{Lctrl}{RCtrl}{LWin}{RWin}
 		this.waitingForInput := false
 		if(ErrorLevel == "EndKey:Backspace")
 		{ 	return "backspace"
@@ -257,9 +257,13 @@ class OnScreen
 		{	return "cancelled"
 		} else if(ErrorLevel == "EndKey:Tab")
 		{	return "tab"
-		}
-		if(InStr(errorLevel, "EndKey:"))
+		} else if(ErrorLevel == "EndKey:Enter")
 		{	return "end"
+		} else if(InStr(errorLevel, "EndKey:"))
+		{	StringReplace, keyName, ErrorLevel, EndKey:
+			send {%keyName% down}
+			KeyWait, % keyName
+			return this.getNextChar()
 		}
 		return oneChar
 	}

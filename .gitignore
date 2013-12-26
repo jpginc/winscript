@@ -1,4 +1,5 @@
 *.backup
 *.failed
 Addons/ping.ahk
+Addons/file explorer.ahk
 test.ahk
