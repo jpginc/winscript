@@ -84,7 +84,8 @@ class OnScreen
 	 */
 	hide()
 	{	if(this.waitingForInput)
-		{	send {esc}
+		{	Gui splash: +lastfound
+			send {esc}
 			return
 		}
 		if(this.guiVisible)
