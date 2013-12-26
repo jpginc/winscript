@@ -7,8 +7,11 @@
 	
 	__new(shortcuts, codeSegments)
 	{	this.shortcuts := StrSplit(shortcuts, ",")
-		this.codeSegments := StrSplit(codeSegments, ",")
+		this.shortcuts.remove(this.shortcuts.maxIndex())
+		this.codeSegments := StrSplit(codeSegments, ",")		
+		this.codeSegments.remove(this.codeSegments.maxIndex())
 		this.allShortcuts := StrSplit(shortcuts "," codeSegments, ",")
+		this.allShortcuts.remove(this.allShortcuts.maxIndex())
 		return this
 	}
 	
@@ -98,6 +101,10 @@
 		if(errorlevel)
 		{	run, notepad "%filename%"
 		}
+		return
+	}
+	toggleHighVisiblity()
+	{	this.display.toggleVisiblitySettings()
 		return
 	}
 }

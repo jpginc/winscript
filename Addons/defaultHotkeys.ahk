@@ -1,5 +1,4 @@
-﻿;JPGIncWinscriptFlag Start defaultHotkeys
-#If
+﻿#If
 ;Capslock + Esc exits the program
 ~CapsLock & Esc::
 ~Esc & CapsLock::
@@ -30,4 +29,12 @@
 {	GlobalController.esc()
 	return
 }
-;JPGIncWinscriptFlag End defaultHotkeys
+;set the display to be black or outlined
+#if globalController.getContext() != ""
+~capslock & v::
+~v & capslock::
+{	SetCapsLockState, off
+	globalController.toggleHighVisiblity()
+	KeyWait, v
+	return
+}

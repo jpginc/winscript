@@ -4,15 +4,16 @@
 class OnScreen
 {	selectionOffput := 5
 	choiceOffput := 10
-	fillColor := "Green"
-	strokeColor := "Yellow"
+	fillColor := "Yellow"
+	;strokeColor := "Green"
+	strokeColor := "Black"
 	fontSize := 25
 	ignoreMouseClick := false
 	ignoreEsc := false
 	controller := ""
 	guiVisible := false
 	waitingForInput := false
-	
+	visiblitySetting := 1
 	/* 
 	 * Creates a gui 
 	 */
@@ -64,11 +65,11 @@ class OnScreen
 			this.ignoreEsc := params.maxIndex() > 1 ? params[2] : false
 		}
 		;the message
-		Loop, 5
+		Loop, % this.visiblitySetting
 		{	GuiControl, splash:text, static%A_index%, % message
 		}
 		;the choices
-		loop, 5
+		loop, % this.visiblitySetting
 		{	GuiControl, splash:text, % "static" A_index + this.selectionOffput, % selection
 			GuiControl, splash:text, % "static" A_index + this.choiceOffput, % choices
 		}
@@ -135,11 +136,10 @@ class OnScreen
 		this.ignoreEsc := false
 		selection := ""
 		oneChar := ""
-		
+		filteredChoices := origionalChoices
 		;get the input
 		while true
-		{	filteredChoices := this.filterChoices(origionalChoices, selection)
-			this.display(message, this.arrayToString(filteredChoices), selection)
+		{	this.display(message, this.arrayToString(filteredChoices), selection)
 			oneChar := this.getNextChar()
 			if(oneChar == "cancelled")
 			{	this.hide()
@@ -148,8 +148,12 @@ class OnScreen
 			{	break
 			} else if(oneChar == "backspace")
 			{	StringTrimRight, selection, selection, 1
+				filteredChoices := this.filterChoices(origionalChoices, selection)
+			} else if(oneChar == "tab")
+			{	this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
 			} else
 			{	selection .= oneChar
+				filteredChoices := this.filterChoices(origionalChoices, selection)
 			}
 		}
 		this.hide()
@@ -245,23 +249,70 @@ class OnScreen
 	 */
 	getNextChar()
 	{	this.waitingForInput := true
-		input, oneChar, L1,{Esc}{BackSpace}{enter}
+		input, oneChar, L1,{Esc}{BackSpace}{enter}{tab}
 		this.waitingForInput := false
 		if(ErrorLevel == "EndKey:Backspace")
 		{ 	return "backspace"
 		} else if(ErrorLevel == "EndKey:Escape")
 		{	return "cancelled"
+		} else if(ErrorLevel == "EndKey:Tab")
+		{	return "tab"
 		}
 		if(InStr(errorLevel, "EndKey:"))
 		{	return "end"
 		}
 		return oneChar
 	}
+	firstIsLast(ByRef theArray, reverse)
+	{	if(reverse)
+		{	removed := theArray.remove(theArray.maxIndex())
+			theArray.insert(theArray.minIndex() - 1, removed)
+		} else
+		{	removed := theArray.remove(theArray.minIndex())
+			theArray.insert(theArray.maxIndex() + 1, removed)
+		}
+		return
+	}
 	arrayToString(theArray)
 	{	theString := ""
 		for key, aString in theArray
-		{	theString .= aString "`n"
+		{	if(trim(aString) == "")
+			{	continue
+			}
+			theString .= aString "`n"
 		}
 		return theString
 	}	
+	toggleVisiblitySettings()
+	{	if(this.visiblitySetting == 1)
+		{	this.visiblitySetting := 5
+			ToolTip, High visiblity menu turned ON
+			GuiControlGet, message, splash:, static1
+			GuiControlGet, input, splash:, % "static" this.choiceOffput + 1
+			GuiControlGet, selection, splash:, % "static" this.selectionOffput + 1
+			loop, 4
+			{	GuiControl, splash:text, % "static" A_index + 1 +  this.selectionOffput, % selection
+				GuiControl, splash:text, % "static" A_index + 1 +this.choiceOffput, % input
+				GuiControl, splash:text, % "static" A_index + 1, % message
+			}
+			SetTimer, RemoveToolTip, Off
+			SetTimer, removeTooltip, 2000
+		} else
+		{	this.visiblitySetting := 1
+			loop, 4
+			{	GuiControl, splash:text, % "static" A_index + 1 + this.selectionOffput,
+				GuiControl, splash:text, % "static" A_index + 1 + this.choiceOffput,
+				GuiControl, splash:text, % "static" A_index + 1, 
+			}
+			ToolTip, High visiblity menu turned OFF
+			SetTimer, RemoveToolTip, Off
+			SetTimer, removeTooltip, 2000
+		}
+		return
+	}
+}
+removeTooltip:
+{	SetTimer, RemoveToolTip, Off
+	ToolTip
+	return
 }
