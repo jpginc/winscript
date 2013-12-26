@@ -8,6 +8,13 @@ class recompiler
     {   return this
     }
     
+    getBeforeFlag()
+    {   return this.beforeFlag
+    }   
+    getAfterFlag()
+    {   return this.afterFlag
+    }
+    
     getRunningCode() 
     {   if(A_IsCompiled) 
         {   MsgBox, , ERROR, ERROR Cannot edit this script because it is already compiled!

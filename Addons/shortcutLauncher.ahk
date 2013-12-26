@@ -6,6 +6,7 @@ shortcutLauncher(controller)
 	if(className == "cancelled")
 	{	return
 	}
+	StringReplace, className, className, %A_space%, _ , All
 	controller.setContext(className)
 	if(IsObject(%className%))
 	{	new %className%(controller)

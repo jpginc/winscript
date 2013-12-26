@@ -12,6 +12,12 @@ if not A_IsAdmin
 {	Run *RunAs "%A_ScriptFullPath%" 
 	ExitApp
 }
+IfNotExist, Addons
+{   MsgBox, 4, JPGInc ERROR, ERROR the Addons folder does not exist. Would you like to create and populate the folder now?
+    IfMsgBox, Yes
+    {   unpack()
+    }
+}
 GlobalController := new Controller(JPGIncShortcuts, JPGIncCodeSegments)
 return
 ;JPGIncWinscriptFlag End autoExecute

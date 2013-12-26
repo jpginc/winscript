@@ -93,4 +93,11 @@
 		}
 		return false
 	}
+	edit(filename)
+	{	Run, edit "%filename%", , UseErrorLevel
+		if(errorlevel)
+		{	run, notepad "%filename%"
+		}
+		return
+	}
 }

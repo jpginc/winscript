@@ -1,2 +1,4 @@
 *.backup
 *.failed
+Addons/ping.ahk
+test.ahk
