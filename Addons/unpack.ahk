@@ -11,7 +11,7 @@ unpack()
 	
 	Loop, parse, source, `n
 	{	if(RegExMatch(A_loopfield, "m)^" beforeFlag))
-		{	filename := RegExReplace(A_loopfield, "m)^" beforeFlag)
+		{	filename := RegExReplace(A_loopfield, "m)^" beforeFlag "(.*)\R", "$1")
 			IfNotInString, fileName, .
 			{	filename .= ".ahk"
 			}
