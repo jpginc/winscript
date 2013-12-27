@@ -202,31 +202,35 @@ class OnScreen
 		sortedChoices := object()
 		returnArray := Object()
 		;~ returnString := ""
-		filterChars := StrSplit(filter)
 		for key, choice in choices
 		{	score := 0
-			consecutiveCharReward := 1
-			bonus := 0
-			for index, char in filterChars
-			{	if((found := InStr(choice, char)))
-				{	if(found == 1 && index == 1)
-					{	;the first char in the filter matches the first char of the choice
-						bonus := 2
+			compareString := filter
+			while(compareString)
+			{	bonus := StrLen(compareString) * 2
+				if(pos := RegExMatch(choice, escapeRegex(compareString)))
+				{	score += bonus
+					if(pos == 1)
+					{	score += bonus
 					}
-					if(found == index)
-					{	bonus *= 2
+				}
+				if(pos := RegExMatch(choice, "i)" escapeRegex(compareString)))
+				{	score += bonus
+					if(pos == 1)
+					{	score += bonus
 					}
-					;the more consecutive matching chars the higher the score
-					consecutiveCharReward *= 2
-					score += consecutiveCharReward + bonus
-				} else
-				{	consecutiveCharReward := 1
-					bonus := 1
-				}	
+				}
+				if(RegExMatch(choices, "\W" escapeRegex(compareString)))
+				{	score += bonus
+				}
+				if(RegExMatch(choice, "i)^" escapeRegex(compareString) "$"))
+				{	score *= 100
+				}
+				StringTrimLeft, compareString, compareString, 1
 			}
+			score *= 100
 			while(sortedChoices.hasKey(score))
 			{ ;increment score until there is a free spot
-				score++
+				score--
 			}
 			sortedChoices.Insert(score, choice)
 		}
@@ -234,11 +238,6 @@ class OnScreen
 		while((highestScore := sortedChoices.remove(sortedChoices.maxIndex())) != "")
 		{	returnArray.insert(highestScore)
 		}
-		;~ while((temp := sortedChoices.remove(sortedChoices.maxIndex())) != "")
-		;~ {	
-			;~ returnString .= temp "`n"
-		;~ }
-		;~ return returnString
 		return returnArray
 	}
 	
