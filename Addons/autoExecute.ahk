@@ -1,4 +1,3 @@
-;JPGIncWinscriptFlag Start autoExecute
 /*
  * This file is always included first in the compilation process and is the auto execute secion
  * of the script
@@ -23,4 +22,39 @@ return
 escapeRegex(theString) 
 {	return "\Q" theString "\E"
 }
-;JPGIncWinscriptFlag End autoExecute
+inArray(array, item)
+{	for key, val in array
+    {	if(val == item)
+        {	return true
+        }
+    }
+    return false
+}
+firstIsLast(ByRef theArray, reverse := false)
+{	if(reverse)
+    {	removed := theArray.remove(theArray.maxIndex())
+        theArray.insert(theArray.minIndex() - 1, removed)
+    } else
+    {	removed := theArray.remove(theArray.minIndex())
+        theArray.insert(theArray.maxIndex() + 1, removed)
+    }
+    return
+}
+arrayToString(theArray)
+{	theString := ""
+    for key, aString in theArray
+    {	if(trim(aString) == "")
+        {	continue
+        }
+        theString .= aString "`n"
+    }
+    return theString
+}	
+removeFromArray(theArray, item)
+{   for key, val in theArray
+    {  if(val == item)
+       {    return theArray.remove(key)
+       }
+    }
+    return
+}
