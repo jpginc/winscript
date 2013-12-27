@@ -4,9 +4,10 @@
 class OnScreen
 {	selectionOffput := 5
 	choiceOffput := 10
-	fillColor := "Yellow"
-	;strokeColor := "Green"
-	strokeColor := "Black"
+	fillColor := "Black"
+	regularFillColor := "Black"
+	highVisFillColor := "green"
+	strokeColor := "Yellow"
 	fontSize := 25
 	ignoreMouseClick := false
 	ignoreEsc := false
@@ -18,31 +19,54 @@ class OnScreen
 	 * Creates a gui 
 	 */
 	__New(controller)
-	{	Gui splash: new
+	{	this.initialiseGui()
+		this.controller := controller
+		return this
+	}
+	;not sure why but selection and input needed to be swapped....
+	initialiseGui(message := "", selection := "", Input := "", doShow := false)
+	{	if(this.visiblitySetting != 1)
+		{	messageOutline := message
+			inputOutline := Input
+			selectionOutline := selection
+		} else
+		{	messageOutline := ""
+			inputOutline := ""
+			selectionOutline := ""
+		}
+		Gui splash: destroy
+		Gui splash: new
 		Gui splash: Color, White
 		height := A_Screenheight - 150
 		width := A_ScreenWidth - 200
 		Gui splash: font, % "s" this.fontSize "bold c" this.strokeColor, TimesNewRoman 
 		;for the message
-		Gui splash: add, text, x1 y2 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x2 y1 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x3 y2 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x2 y3 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, % "x2 y2 Center BackgroundTrans c" this.fillColor " h" height " w" width
+		Gui splash: add, text, x1 y2 Center BackgroundTrans h%height% w%width%, % messageOutline
+		Gui splash: add, text, x2 y1 Center BackgroundTrans h%height% w%width%, % messageOutline
+		Gui splash: add, text, x3 y2 Center BackgroundTrans h%height% w%width%, % messageOutline
+		Gui splash: add, text, x2 y3 Center BackgroundTrans h%height% w%width%, % messageOutline
+		Gui splash: add, text, % "x2 y2 Center BackgroundTrans c" this.fillColor " h" height " w" width, % message
 		;for input
-		Gui splash: add, text, x1 yp+52 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x2 yp-1 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x3 yp+1 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x2 yp+1 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, % "x2 yp-1 Center BackgroundTrans c" this.fillColor " h" height " w" width
+		Gui splash: add, text, x1 yp+52 Center BackgroundTrans h%height% w%width%, % inputOutline
+		Gui splash: add, text, x2 yp-1 Center BackgroundTrans h%height% w%width%, % inputOutline
+		Gui splash: add, text, x3 yp+1 Center BackgroundTrans h%height% w%width%, % inputOutline
+		Gui splash: add, text, x2 yp+1 Center BackgroundTrans h%height% w%width%, % inputOutline
+		Gui splash: add, text, % "x2 yp-1 Center BackgroundTrans c" this.fillColor " h" height " w" width, % input
 		;for the selections
-		Gui splash: add, text, x49 yp+52 BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x50 yp-1 BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x51 yp+1 BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x50 yp+1 BackgroundTrans h%height% w%width%
-		Gui splash: add, text, % "x50 yp-1 BackgroundTrans c"  this.fillColor " h" height " w" width
-		this.controller := controller
-		return this
+		Gui splash: add, text, x49 yp+52 BackgroundTrans h%height% w%width%, % selectionOutline
+		Gui splash: add, text, x50 yp-1 BackgroundTrans h%height% w%width%, % selectionOutline
+		Gui splash: add, text, x51 yp+1 BackgroundTrans h%height% w%width%, % selectionOutline
+		Gui splash: add, text, x50 yp+1 BackgroundTrans h%height% w%width%, % selectionOutline
+		Gui splash: add, text, % "x50 yp-1 BackgroundTrans c"  this.fillColor " h" height " w" width, % selection
+		if(doShow)
+		{	Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu +Owner
+			WinSet, TransColor, white
+			Gui splash: show, NoActivate y120, WinscriptSplash
+			this.guiVisible := true
+		} else
+		{	this.guiVisible := false
+		}
+		return
 	}
 	
 	mouseClick()
@@ -66,12 +90,12 @@ class OnScreen
 		}
 		;the message
 		Loop, % this.visiblitySetting
-		{	GuiControl, splash:text, static%A_index%, % message
+		{	GuiControl, splash:text, % "static" 6 - A_index, % message
 		}
 		;the choices
 		loop, % this.visiblitySetting
-		{	GuiControl, splash:text, % "static" A_index + this.selectionOffput, % selection
-			GuiControl, splash:text, % "static" A_index + this.choiceOffput, % choices
+		{	GuiControl, splash:text, % "static" 6 - A_index + this.selectionOffput, % selection
+			GuiControl, splash:text, % "static" 6 - A_index + this.choiceOffput, % choices
 		}
 		Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu +Owner
 		WinSet, TransColor, white
@@ -288,30 +312,21 @@ class OnScreen
 		return theString
 	}	
 	toggleVisiblitySettings()
-	{	if(this.visiblitySetting == 1)
+	{	SetTimer, RemoveToolTip, Off
+		SetTimer, removeTooltip, 2000
+		GuiControlGet, message, splash:, static5
+		GuiControlGet, input, splash:, % "static" this.choiceOffput + 5
+		GuiControlGet, selection, splash:, % "static" this.selectionOffput + 5
+		if(this.visiblitySetting == 1)
 		{	this.visiblitySetting := 5
+			this.fillColor := this.highVisFillColor
 			ToolTip, High visiblity menu turned ON
-			GuiControlGet, message, splash:, static1
-			GuiControlGet, input, splash:, % "static" this.choiceOffput + 1
-			GuiControlGet, selection, splash:, % "static" this.selectionOffput + 1
-			loop, 4
-			{	GuiControl, splash:text, % "static" A_index + 1 +  this.selectionOffput, % selection
-				GuiControl, splash:text, % "static" A_index + 1 +this.choiceOffput, % input
-				GuiControl, splash:text, % "static" A_index + 1, % message
-			}
-			SetTimer, RemoveToolTip, Off
-			SetTimer, removeTooltip, 2000
 		} else
 		{	this.visiblitySetting := 1
-			loop, 4
-			{	GuiControl, splash:text, % "static" A_index + 1 + this.selectionOffput,
-				GuiControl, splash:text, % "static" A_index + 1 + this.choiceOffput,
-				GuiControl, splash:text, % "static" A_index + 1, 
-			}
+			this.fillColor := this.regularFillColor
 			ToolTip, High visiblity menu turned OFF
-			SetTimer, RemoveToolTip, Off
-			SetTimer, removeTooltip, 2000
 		}
+		this.initialiseGui(message, input, selection, true)
 		return
 	}
 }
