@@ -86,6 +86,7 @@ class OnScreen
 	hide()
 	{	if(this.waitingForInput)
 		{	Gui splash: +lastfound
+			WinActivate, A
 			send {esc}
 			return
 		}
@@ -158,7 +159,7 @@ class OnScreen
 		}
 		this.hide()
 		;get the input
-		return filteredChoices.maxIndex() > 0 ? filteredChoices[1] : selection
+		return filteredChoices[filteredChoices.minIndex()]
 	}
 	/*
 	 * Gets input from the user.
