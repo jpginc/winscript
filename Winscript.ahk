@@ -9,6 +9,7 @@ JPGIncShortcuts := "remove,edit,add,update,new,unpack,"
 JPGIncCodeSegments := "autoExecute,defaultHotkeys,display,controller,shortcutLauncher,recompiler,"
 ;JPGIncWinscriptFlag End shortcutNames
 ;JPGIncWinscriptFlag Start autoExecute
+;JPGIncWinscriptFlag Start autoExecute
 /*
  * This file is always included first in the compilation process and is the auto execute secion
  * of the script
@@ -30,7 +31,291 @@ IfNotExist, Addons
 }
 GlobalController := new Controller(JPGIncShortcuts, JPGIncCodeSegments)
 return
+escapeRegex(theString) 
+{	return "\Q" theString "\E"
+}
 ;JPGIncWinscriptFlag End autoExecute
+;JPGIncWinscriptFlag End autoExecute
+;JPGIncWinscriptFlag End autoExecute
+;JPGIncWinscriptFlag Start remove
+/* this function allows the user to remove a code segment from the running code
+ * The user is presented with a list of code segments and, if they select one
+ * it is removed from the running code and the script is reloaded.
+ * @param controller
+ *		An instance of the Controller class
+ */
+remove(controller)
+{	while(true)
+	{	toRemove := controller.getChoice(controller.getAllShortcuts(), "Select a code segment/shortcut to remove")
+		if(toRemove == "cancelled")
+		{	return
+		}
+		if(toRemove == "autoExecute")
+		{	MsgBox, , ERROR, Error you cannot remove the autoExecute section. Use edit/update instead
+			return
+		}
+		if(controller.codeOrShortcutExists(toRemove))
+		{	MsgBox, 4, Warning, Are you sure you wish to remove the code segment %toRemove%?
+			IfMsgBox, No
+			{	continue
+			}
+			r := new recompiler()
+			r.remove(toRemove)
+		} else
+		{	MsgBox, , Error, Error that shortcut does not exist
+		}
+	}
+	return 
+}
+;JPGIncWinscriptFlag End remove
+;JPGIncWinscriptFlag Start edit
+/* This function opens a code segments file for editing 
+ * as long as the file is present in the Addons folder
+ * @param controller
+ *		An instance of the Controller class
+ */
+edit(controller)
+{	while(true)
+	{	;get the name of the code segment to edit
+		toEdit := controller.getChoice(controller.getAllShortcuts(), "Select a code segment/shortcut to edit")
+		if(toEdit == "cancelled")
+		{	return
+		}
+		if(controller.codeOrShortcutExists(toEdit)) ;this isn't really neccesarry...
+		{	IfNotExist, % A_ScriptDir "\Addons\" toEdit ".ahk"
+			{	MsgBox, , JPGInc ERROR, ERROR file does not exists in the Addons folder.
+				return
+			}
+			run, edit "%A_ScriptDir%\Addons\%toEdit%.ahk", , UseErrorLevel
+			if(errorLevel)
+			{	run, % "notepad """ A_ScriptDir "\Addons\" toEdit ".ahk"""
+			}
+			return
+		} else
+		{	MsgBox, , JPGInc ERROR, ERROR that shortcut does not exist!
+		}
+	}
+}
+;JPGIncWinscriptFlag End edit
+;JPGIncWinscriptFlag Start add
+/* This function merges a new code segment into the running code.
+ * The user is prompted for a shortcut name which must not be
+ * the same as an already merged code segment. 
+ * 
+ * The code segment may be added as a new 'shortcut' in which case
+ * a shortcut is added to the default shortcut list. If a file exists
+ * in the Addons folder with the same name as the shortcut then it is
+ * used otherwise the user is prompted to select a file. 
+ * 
+ * After the code segment is added the script is reloaded
+ * @param controller
+ *		An instance of the Controller class
+ */
+add(controller)
+{	while(true)
+	{	;get the name of the new code segment
+		newShortcut := controller.getInput("Type a shortcut name.")
+		if(newShortcut == "cancelled")
+		{	return
+		}
+		;make sure the name is valid
+		if(! controller.isValidShortcut(newShortcut))
+		{	MsgBox, , JPGInc ERROR, Error that shortcut is invalid or already in use
+		} else
+		{	;load the code
+			IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
+			{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
+			} else
+			{	controller.showMessage("Select the file to load", ignoreMouseClicks := true)
+				FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
+				if(errorlevel)
+				{	controller.clearDisplay()
+					return ;the user cancelled
+				}
+				controller.clearDisplay()
+				FileRead, newCode, % dir
+			}
+			if(! newCode)
+			{	MsgBox, , JPGInc ERROR, Error file could not be read or was empty
+				return
+			}
+			recomp := new recompiler(controller)
+			MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
+			IfMsgBox Yes
+			{	recomp.addShortcut(newShortcut, newCode)
+			} else 
+			{	recomp.add(newShortcut, newCode)
+			}	
+			return
+		}
+	}
+}
+;JPGIncWinscriptFlag End add
+;JPGIncWinscriptFlag Start update
+/* This function updates a code segment within the running code
+ * 
+ * The user is presented with a list of code segments and if one
+ * is selected it is removed and replaced with the new code
+ *
+ * If a file exists in the addons folder with the same name of
+ * the code segment that the user selects then the contents of 
+ * that file is used to replace the removed code otherwise the
+ * user is prompted to select the new file
+ *
+ * @param controller
+ * 		An instance of the Controller class
+ */
+update(controller)
+{	while(true)
+	{	;get the name of the code segment to update
+		toUpdate := controller.getChoice(controller.getAllShortcuts(), "Select a code segment to update")
+		if(toUpdate == "cancelled")
+		{	return
+		}
+		if(controller.codeOrShortcutExists(toUpdate))
+		{	;check if a file with the same name exists in the addons folder
+			IfExist, % A_scriptdir "\Addons\" toUpdate ".ahk"
+			{	FileRead, newCode, % A_ScriptDir "\Addons\" toUpdate ".ahk"
+			} else
+			{	controller.showMessage("Select the file to load", ignoreMouseClicks := true)
+				FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
+				if(errorlevel)
+				{	controller.clearDisplay()
+					return ;the user cancelled
+				}
+				controller.clearDisplay()
+				FileRead, newCode, % dir
+			}
+			if(! newCode)
+			{	MsgBox, , Error, Error file could not be read or was empty
+				return
+			}
+			MsgBox, 4, Warning, Are you sure you wish to update the shortcut %toUpdate%?
+			IfMsgBox, No
+			{	continue
+			}
+			r := new recompiler()
+			r.update(toUpdate, newCode)
+		} else
+		{	MsgBox, , Error, Error that shortcut does not exist
+		}
+	}
+	return 
+}
+;JPGIncWinscriptFlag End update
+;JPGIncWinscriptFlag Start new
+class new
+{	
+	
+	__new(controller)
+	{	shortcutName := scriptName := controller.getInput("Enter the name of your new script. Ideally the name will be the same as the shortcut you intend to use")
+		if(scriptName == "cancelled" || trim(scriptName) == "")
+		{	return
+		}
+		StringReplace, shortcutName, shortcutName, %A_space%, _, All
+		IfNotInString, scriptName, .
+		{	scriptname .= ".ahk"
+		}
+		{	IfExist, addons\%scriptName%
+			{	MsgBox, 4, JPGInc Warning, Warning, the file %scriptName% already exists in the Addons folder. Would you like to open it for editing?
+				IfMsgBox, Yes
+				{	controller.edit("addons\" scriptName)
+				}
+				return
+			}
+		}
+		FileAppend,
+			(
+/* If you add this file to Winscript using the 'add' shortcut when the shortcut
+ * is selected the program will first try to instanciate a class with the same 
+ * name, then try and run a function with the same name and finally jump to 
+ * a label with the same name. 
+ *
+ */
+;uncomment this if you want to create a class
+/*
+class %shortcutName%
+{	__new(controller)
+	{	controller.showMessage("created the class")
+		return this
+	}
+}
+*/
+;uncomment this if you want to use a function
+/*
+%shortcutName%(controller)
+{	controller.showMessage("Called the function")
+	return
+}
+*/
+;uncomment this if you want to use a label
+/*
+%shortcutName%:
+{	globalController.showMessage("Called the label")
+	return
+}
+*/
+/* When the shortcut is launched the global controllers 'context' is set to the
+ * name of the shortcut. This allows you to activate hotkeys only when your script
+ * has been launched
+ */
+;place the hotkeys you wish to be active while running this script here
+#if GlobalController.getContext() == "%shortcutName%"
+;by default the escape key will cancel your shortcut
+esc::
+{	globalController.clearDisplay()
+	globalController.setContext("")
+	return
+}
+;place any hotkeys you want to be active all the time here
+#if
+			)
+			, addons\%scriptName%
+		controller.edit("addons\" scriptName)
+		controller.showMessage("The file " scriptName " has been created in the Addons folder. When you have finished creating the script use the 'Add' shortcut to include it into the main script")
+		return this
+	}
+}
+;JPGIncWinscriptFlag End new
+;JPGIncWinscriptFlag Start unpack
+unpack()
+{	IfNotExist, Addons
+	{	FileCreateDir, Addons
+	}
+	recompiler := new recompiler()
+	beforeFlag := recompiler.getBeforeFlag()
+	afterFlag := recompiler.getAfterFlag()
+	source := recompiler.getRunningCode()
+	fileName := ""
+	warnings := ""
+	
+	Loop, parse, source, `n
+	{	if(RegExMatch(A_loopfield, "m)^" beforeFlag))
+		{	filename := RegExReplace(A_loopfield, "m)^" beforeFlag "(.*)\R", "$1")
+			IfNotInString, fileName, .
+			{	filename .= ".ahk"
+			}
+			IfExist, Addons\%fileName%
+			{	warnings .= fileName "`n"
+				filename := "" ;dont append to an already existing file
+			}
+			continue
+		}
+		if(RegExMatch(A_loopfield, "m)^" afterFlag))
+		{	filename := ""
+		}
+		if(filename != "")
+		{	FileAppend, % A_loopfield, Addons\%filename%
+		}
+	}
+	if(warnings)
+	{	MsgBox, , JPGInc Warning, Warning the following files already existed and were not unpacked`n%warnings%
+	} else
+	{	MsgBox, , JPGInc Success, Files unpacked successfully
+	}
+	return
+}
+;JPGIncWinscriptFlag End unpack
 ;JPGIncWinscriptFlag Start defaultHotkeys
 #If
 ;Capslock + Esc exits the program
@@ -62,139 +347,16 @@ return
 {	GlobalController.esc()
 	return
 }
+;set the display to be black or outlined
+#if globalController.getContext() != ""
+~capslock & v::
+~v & capslock::
+{	SetCapsLockState, off
+	globalController.toggleHighVisiblity()
+	KeyWait, v
+	return
+}
 ;JPGIncWinscriptFlag End defaultHotkeys
-;JPGIncWinscriptFlag Start edit
-class edit
-{	__new(controller)
-	{	while(true)
-		{	toEdit := controller.getChoice(controller.getAllShortcuts(), "Select a code segment/shortcut to edit")
-			if(toEdit == "cancelled")
-			{	return
-			}
-			if(controller.codeOrShortcutExists(toEdit))
-			{	IfNotExist, % A_ScriptDir "\Addons\" toEdit ".ahk"
-				{	MsgBox, , JPGInc ERROR, ERROR file does not exists in the Addons folder.
-					return
-				}
-				run, edit "%A_ScriptDir%\Addons\%toEdit%.ahk", , UseErrorLevel
-				if(errorLevel)
-				{	run, % "notepad """ A_ScriptDir "\Addons\" toEdit ".ahk"""
-				}
-				return
-			} else
-			{	MsgBox, , JPGInc ERROR, ERROR that shortcut does not exist!
-			}
-		}
-	}
-}
-;JPGIncWinscriptFlag End edit
-;JPGIncWinscriptFlag Start add
-class add
-{	__new(controller)
-	{	while(true)
-		{	newShortcut := controller.getInput("Type a shortcut name.")
-			if(newShortcut == "cancelled")
-			{	return
-			}
-			if(! controller.isValidShortcut(newShortcut))
-			{	MsgBox, , Error, Error that shortcut is invalid or already in use
-			} else
-			{	IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
-				{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
-				} else
-				{	controller.showMessage("Select the file to load", ignoreMouseClicks := true)
-					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
-					if(errorlevel)
-					{	controller.clearDisplay()
-						return ;the user cancelled
-					}
-					controller.clearDisplay()
-					FileRead, newCode, % dir
-				}
-				if(! newCode)
-				{	MsgBox, , Error, Error file could not be read or was empty
-					return
-				}
-				recomp := new recompiler(controller)
-				MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
-				IfMsgBox Yes
-				{	recomp.addShortcut(newShortcut, newCode)
-				} else 
-				{	recomp.add(newShortcut, newCode)
-				}	
-				return
-			}
-		}
-			
-	}
-}
-;JPGIncWinscriptFlag End add
-;JPGIncWinscriptFlag Start update
-class update
-{	__new(controller)
-	{	while(true)
-		{	toUpdate := controller.getChoice(controller.getAllShortcuts(), "Select a code segment to update")
-			if(toUpdate == "cancelled")
-			{	return
-			}
-			if(! controller.validShortcut(newShortcut))
-			{	IfExist, % A_scriptdir "\Addons\" toUpdate ".ahk"
-				{	FileRead, newCode, % A_ScriptDir "\Addons\" toUpdate ".ahk"
-				} else
-				{	controller.showMessage("Select the file to load", ignoreMouseClicks := true)
-					FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
-					if(errorlevel)
-					{	controller.clearDisplay()
-						return ;the user cancelled
-					}
-					controller.clearDisplay()
-					FileRead, newCode, % dir
-				}
-				if(! newCode)
-				{	MsgBox, , Error, Error file could not be read or was empty
-					return
-				}
-				MsgBox, 4, Warning, Are you sure you wish to update the shortcut %toUpdate%?
-				IfMsgBox, No
-				{	return
-				}
-				r := new recompiler()
-				r.update(toUpdate, newCode)
-			} else
-			{	MsgBox, , Error, Error that shortcut does not exist
-			}
-		}
-		return this
-	}
-}
-;JPGIncWinscriptFlag End update
-;JPGIncWinscriptFlag Start remove
-class remove
-{	__new(controller)
-	{	while(true)
-		{	toRemove := controller.getChoice(controller.getAllShortcuts(), "Select a code segment/shortcut to remove")
-			if(toRemove == "cancelled")
-			{	return
-			}
-			if(toRemove == "autoExecute")
-			{	MsgBox, , ERROR, Error you cannot remove the autoExecute section. Use edit/update instead
-				return
-			}
-			if(controller.codeOrShortcutExists(toRemove))
-			{	MsgBox, 4, Warning, Are you sure you wish to remove the code segment %toRemove%?
-				IfMsgBox, No
-				{	return
-				}
-				r := new recompiler()
-				r.remove(toRemove)
-			} else
-			{	MsgBox, , Error, Error that shortcut does not exist
-			}
-		}
-		return this
-	}
-}
-;JPGIncWinscriptFlag End remove
 ;JPGIncWinscriptFlag Start controller
 class Controller
 {	display := new OnScreen(this)
@@ -205,8 +367,11 @@ class Controller
 	
 	__new(shortcuts, codeSegments)
 	{	this.shortcuts := StrSplit(shortcuts, ",")
-		this.codeSegments := StrSplit(codeSegments, ",")
+		this.shortcuts.remove(this.shortcuts.maxIndex())
+		this.codeSegments := StrSplit(codeSegments, ",")		
+		this.codeSegments.remove(this.codeSegments.maxIndex())
 		this.allShortcuts := StrSplit(shortcuts "," codeSegments, ",")
+		this.allShortcuts.remove(this.allShortcuts.maxIndex())
 		return this
 	}
 	
@@ -298,8 +463,37 @@ class Controller
 		}
 		return
 	}
+	toggleHighVisiblity()
+	{	this.display.toggleVisiblitySettings()
+		return
+	}
 }
 ;JPGIncWinscriptFlag End controller
+;JPGIncWinscriptFlag Start shortcutLauncher
+/* This is the class that will be loaded when entering script mode 
+ * Displays a list of shorcuts to choose from
+ */
+shortcutLauncher(controller)
+{	className := controller.getChoice(controller.getShortcuts(), "Select script to run")
+	if(className == "cancelled")
+	{	return
+	}
+	StringReplace, className, className, %A_space%, _ , All
+	controller.setContext(className)
+	if(IsObject(%className%))
+	{	new %className%(controller)
+	} else if((argCount := IsFunc(className)))
+	{	if(argCount == 1)
+		{	%className%()
+		} else
+		{	%className%(controller)
+		}
+	} else if(IsLabel(className))
+	{	gosub, %className%
+	}
+	return
+}
+;JPGIncWinscriptFlag End shortcutLauncher
 ;JPGIncWinscriptFlag Start recompiler
 class recompiler
 {
@@ -506,192 +700,121 @@ class recompiler
 	}
 }
 ;JPGIncWinscriptFlag End recompiler
-;JPGIncWinscriptFlag Start shortcutLauncher
-/* This is the class that will be loaded when entering script mode 
- * Displays a list of shorcuts to choose from
- */
-shortcutLauncher(controller)
-{	className := controller.getChoice(controller.getShortcuts(), "Select script to run")
-	if(className == "cancelled")
-	{	return
-	}
-	StringReplace, className, className, %A_space%, _ , All
-	controller.setContext(className)
-	if(IsObject(%className%))
-	{	new %className%(controller)
-	} else if((argCount := IsFunc(className)))
-	{	if(argCount == 1)
-		{	%className%()
-		} else
-		{	%className%(controller)
-		}
-	} else if(IsLabel(className))
-	{	gosub, %className%
-	}
-	return
-}
-;JPGIncWinscriptFlag End shortcutLauncher
-;JPGIncWinscriptFlag Start new
-class new
-{	
-	
-	__new(controller)
-	{	shortcutName := scriptName := controller.getInput("Enter the name of your new script. Ideally the name will be the same as the shortcut you intend to use")
-		if(scriptName == "cancelled" || trim(scriptName) == "")
-		{	return
-		}
-		StringReplace, shortcutName, shortcutName, %A_space%, _, All
-		IfNotInString, scriptName, .
-		{	scriptname .= ".ahk"
-		}
-		{	IfExist, addons\%scriptName%
-			{	MsgBox, 4, JPGInc Warning, Warning, the file %scriptName% already exists in the Addons folder. Would you like to open it for editing?
-				IfMsgBox, Yes
-				{	controller.edit("addons\" scriptName)
-				}
-				return
-			}
-		}
-		FileAppend,
-			(
-/* If you add this file to Winscript using the 'add' shortcut when the shortcut
- * is selected the program will first try to instanciate a class with the same 
- * name, then try and run a function with the same name and finally jump to 
- * a label with the same name. 
- *
- */
-;uncomment this if you want to create a class
-/*
-class %shortcutName%
-{	__new(controller)
-	{	controller.showMessage("created the class")
-		return this
-	}
-}
-*/
-;uncomment this if you want to use a function
-/*
-%shortcutName%(controller)
-{	controller.showMessage("Called the function")
-	return
-}
-*/
-;uncomment this if you want to use a label
-/*
-%shortcutName%:
-{	globalController.showMessage("Called the label")
-	return
-}
-*/
-/* When the shortcut is launched the global controllers 'context' is set to the
- * name of the shortcut. This allows you to activate hotkeys only when your script
- * has been launched
- */
-;place the hotkeys you wish to be active while running this script here
-#if GlobalController.getContext() == "%shortcutName%"
-;by default the escape key will cancel your shortcut
-esc::
-{	globalController.clearDisplay()
-	globalController.setContext("")
-	return
-}
-;place any hotkeys you want to be active all the time here
-#if
-			)
-			, addons\%scriptName%
-		controller.edit("addons\" scriptName)
-		controller.showMessage("The file " scriptName " has been created in the Addons folder. When you have finished creating the script use the 'Add' shortcut to include it into the main script")
-	}
-}
-;JPGIncWinscriptFlag End new
-;JPGIncWinscriptFlag Start unpack
-unpack()
-{	IfNotExist, Addons
-	{	FileCreateDir, Addons
-	}
-	recompiler := new recompiler()
-	beforeFlag := recompiler.getBeforeFlag()
-	afterFlag := recompiler.getAfterFlag()
-	source := recompiler.getRunningCode()
-	fileName := ""
-	warnings := ""
-	
-	Loop, parse, source, `n
-	{	if(RegExMatch(A_loopfield, "m)^" beforeFlag))
-		{	filename := RegExReplace(A_loopfield, "m)^" beforeFlag "(.*)\R", "$1")
-			IfNotInString, fileName, .
-			{	filename .= ".ahk"
-			}
-			IfExist, Addons\%fileName%
-			{	warnings .= fileName "`n"
-				filename := "" ;dont append to an already existing file
-			}
-			continue
-		}
-		if(RegExMatch(A_loopfield, "m)^" afterFlag))
-		{	filename := ""
-		}
-		if(filename != "")
-		{	FileAppend, % A_loopfield, Addons\%filename%
-		}
-	}
-	if(warnings)
-	{	MsgBox, , JPGInc Warning, Warning the following files already existed and were not unpacked`n%warnings%
-	} else
-	{	MsgBox, , JPGInc Success, Files unpacked successfully
-	}
-	return
-}
-;JPGIncWinscriptFlag End unpack
-
 
 ;JPGIncWinscriptFlag Start display
-/* A class that is able to display a message and/or present a list of items 
- * for the user to select from
+/* A class that is able to display text to and get input from the user
+ * 
+ * The display has two modes (which can be switched between using capslock+v
+ * whenever the display is active) high visibility and normal. High visibility
+ * uses 5 gui text elements to make the text displayed appear to have a border
+ * and makes it readable on any background color (where as black text is difficult
+ * to read on a black background)
+ *
+ * The alternate display modes were introduced because the display flickers when 
+ * rendering all 5 text elements in high visibility mode.
  */
 class OnScreen
-{	selectionOffput := 5
+{	;the number of gui elements before the first 'selection' gui elements
+	selectionOffput := 5
+	;the number of guil elements before the 'choice' gui elements
 	choiceOffput := 10
-	fillColor := "Green"
+	;The color of the display text
+	fillColor := "Black"
+	;the default color of normal visibility display
+	regularFillColor := "Black"
+	;the fill color of the high visiblity display
+	highVisFillColor := "green"
+	;the outline color for high visibility display
 	strokeColor := "Yellow"
 	fontSize := 25
+	
+	;whether to clear the display on a click
 	ignoreMouseClick := false
+	;whether to clear the display on the escape key
 	ignoreEsc := false
+	
+	;an instance of the Controller class
 	controller := ""
+	
+	;whether the gui is currently visible or not
 	guiVisible := false
+	;whether we are waiting for user input
 	waitingForInput := false
 	
-	/* 
-	 * Creates a gui 
+	;the numer of gui elements to render. 1 for normal display 5 for high vis
+	visiblitySetting := 1
+	
+	/* initialises the class
+	 * @param controller
+	 * 		an instance of the Controller class
 	 */
 	__New(controller)
-	{	Gui splash: new
+	{	this.initialiseGui()
+		this.controller := controller
+		return this
+	}
+	
+	/*	Creates the display. There are three sections:
+	 * 		message at the top, centered
+	 *		input just below message, centered
+	 *		choices below input left aligned
+	 *	@param message
+	 *		an optional string to display in the message section 
+	 *	@param selection
+	 *		optional string to display in the selection section
+	 *	@param input
+	 *		optional string to display in the input section
+	 * 	@param doShow
+	 *		optional boolean which indicates if the window should be shown immediately
+	 */
+	initialiseGui(message := "", selection := "", Input := "", doShow := false)
+	{	if(this.visiblitySetting != 1)
+		{	messageOutline := message
+			inputOutline := Input
+			selectionOutline := selection
+		} else
+		{	messageOutline := ""
+			inputOutline := ""
+			selectionOutline := ""
+		}
+		Gui splash: destroy
+		Gui splash: new
 		Gui splash: Color, White
 		height := A_Screenheight - 150
 		width := A_ScreenWidth - 200
 		Gui splash: font, % "s" this.fontSize "bold c" this.strokeColor, TimesNewRoman 
 		;for the message
-		Gui splash: add, text, x1 y2 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x2 y1 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x3 y2 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x2 y3 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, % "x2 y2 Center BackgroundTrans c" this.fillColor " h" height " w" width
+		Gui splash: add, text, x1 y2 Center BackgroundTrans h%height% w%width%, % messageOutline
+		Gui splash: add, text, x2 y1 Center BackgroundTrans h%height% w%width%, % messageOutline
+		Gui splash: add, text, x3 y2 Center BackgroundTrans h%height% w%width%, % messageOutline
+		Gui splash: add, text, x2 y3 Center BackgroundTrans h%height% w%width%, % messageOutline
+		Gui splash: add, text, % "x2 y2 Center BackgroundTrans c" this.fillColor " h" height " w" width, % message
 		;for input
-		Gui splash: add, text, x1 yp+52 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x2 yp-1 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x3 yp+1 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x2 yp+1 Center BackgroundTrans h%height% w%width%
-		Gui splash: add, text, % "x2 yp-1 Center BackgroundTrans c" this.fillColor " h" height " w" width
+		Gui splash: add, text, x1 yp+52 Center BackgroundTrans h%height% w%width%, % inputOutline
+		Gui splash: add, text, x2 yp-1 Center BackgroundTrans h%height% w%width%, % inputOutline
+		Gui splash: add, text, x3 yp+1 Center BackgroundTrans h%height% w%width%, % inputOutline
+		Gui splash: add, text, x2 yp+1 Center BackgroundTrans h%height% w%width%, % inputOutline
+		Gui splash: add, text, % "x2 yp-1 Center BackgroundTrans c" this.fillColor " h" height " w" width, % input
 		;for the selections
-		Gui splash: add, text, x49 yp+52 BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x50 yp-1 BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x51 yp+1 BackgroundTrans h%height% w%width%
-		Gui splash: add, text, x50 yp+1 BackgroundTrans h%height% w%width%
-		Gui splash: add, text, % "x50 yp-1 BackgroundTrans c"  this.fillColor " h" height " w" width
-		this.controller := controller
-		return this
+		Gui splash: add, text, x49 yp+52 BackgroundTrans h%height% w%width%, % selectionOutline
+		Gui splash: add, text, x50 yp-1 BackgroundTrans h%height% w%width%, % selectionOutline
+		Gui splash: add, text, x51 yp+1 BackgroundTrans h%height% w%width%, % selectionOutline
+		Gui splash: add, text, x50 yp+1 BackgroundTrans h%height% w%width%, % selectionOutline
+		Gui splash: add, text, % "x50 yp-1 BackgroundTrans c"  this.fillColor " h" height " w" width, % selection
+		if(doShow)
+		{	Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu +Owner
+			WinSet, TransColor, white
+			Gui splash: show, NoActivate y120, WinscriptSplash
+			this.guiVisible := true
+		} else
+		{	this.guiVisible := false
+		}
+		return
 	}
 	
+	/*	If ignoreMouseClicks is set to true then this function does nothing
+	 *	otherwise it clears the screen and cancels input
+	 */
 	mouseClick()
 	{	if(this.ignoreMouseClick)
 		{	return
@@ -699,6 +822,9 @@ class OnScreen
 		return this.hide()
 	}
 	
+	/*	If ignoreEsc is set to true then this function does nothing
+	 *	otherwise it clears the screen and cancels input
+	 */
 	esc()
 	{	if(this.ignoreEsc)
 		{	return
@@ -706,19 +832,20 @@ class OnScreen
 		return this.hide()
 	}
 	
+	/* Sets the text to appear on the screen. 
+	 * Sets the guiVisible variable to true
+	 * @param message
+	 *		A string for the message section
+	 * @param choices
+	 *		A string for the choices section
+	 * @param selection
+	 *		A string for the selection section
+	 */
 	display(message, choices, selection)
-	{	if(params.maxIndex())
-		{	this.ignoreMouseClick := params[1]
-			this.ignoreEsc := params.maxIndex() > 1 ? params[2] : false
-		}
-		;the message
-		Loop, 5
-		{	GuiControl, splash:text, static%A_index%, % message
-		}
-		;the choices
-		loop, 5
-		{	GuiControl, splash:text, % "static" A_index + this.selectionOffput, % selection
-			GuiControl, splash:text, % "static" A_index + this.choiceOffput, % choices
+	{	Loop, % this.visiblitySetting
+		{	GuiControl, splash:text, % "static" 6 - A_index, % message
+			GuiControl, splash:text, % "static" 6 - A_index + this.selectionOffput, % selection
+			GuiControl, splash:text, % "static" 6 - A_index + this.choiceOffput, % choices
 		}
 		Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu +Owner
 		WinSet, TransColor, white
@@ -727,12 +854,17 @@ class OnScreen
 		return
 	}
 	
-	/*
-	 * clear the display
+	/*	If we are waiting for input then the input is canceled. The gui isn't hidden
+	 * 	in this case because in the cancelation process the gui will be hidden anyway.
+	 *	
+	 *	If we aren't waiting for the input then the gui is simply hidden and guiVisible is set to false
+	 *	
+	 *	If neither is true then nothing happens
 	 */
 	hide()
 	{	if(this.waitingForInput)
 		{	Gui splash: +lastfound
+			WinActivate, A
 			send {esc}
 			return
 		}
@@ -746,10 +878,9 @@ class OnScreen
 	
 	/*
 	 * Sets whether or not a click/escape key will clear the screen or not
-	 * @params[1] 
-	 * 		true indicates ignoring mouse clicks
-	 * @params[2]
-	 *		true indicates ignoring the escape key
+	 * @param keys 
+	 * 		keys[1] true indicates ignoring mouse clicks
+	 * 		keys[2] true indicates ignoring the escape key
 	 */
 	setClearKeys(keys)
 	{	this.ignoreMouseClick := keys.maxIndex() > 0 ? keys[1] : false
@@ -760,12 +891,15 @@ class OnScreen
 	/*
 	 * Displays the given message. By default mouseclicks and the escape button 
 	 * clear the message from the screen. Pass the optional arguments to override this behaviour.
-	 * If you wish to clear the display yourself use the clear() function
-	 * usage:
-	 * showMessage(message to display[, array[1] = ignoreMouseClick, array[2] = ignoreEsc])
+	 * If you wish to clear the display yourself use the hide() function
+	 * @param message
+	 *		the string to display
+	 *	@param cancelSettings
+	 * 		cancelSettings[1] true indicates ignoring mouse clicks
+	 * 		cancelSettings[2] true indicates ignoring the escape key
 	 */
-	showMessage(message, optionalArgs := "")
-	{	this.setClearKeys(optionalArgs)
+	showMessage(message, cancelSettings := "")
+	{	this.setClearKeys(cancelSettings)
 		this.display(message, "", "")
 		return
 	}
@@ -773,21 +907,29 @@ class OnScreen
 	 * Displays the given array of choices on the screen and gets input until the user selects
 	 * one of the choices. By default mouseclicks clear the message from the screen. Pass the 
 	 * optional arguments to override this behaviour. If you wish to clear the display yourself 
-	 * use the clear() function
-	 * usage:
-	 * getChoices(array of Choices[, message to display = "", ignoreMouseClick = false])
+	 * use the hide() function
+	 *
+	 * Please note that you cannot ignore the escape key when getting input from the user because
+	 * the input function captures the escape key as an 'end input' flag
+	 *
+	 * @param origionalChoices
+	 *		An array of choices to display to the user. 
+	 * @param message
+	 *		A string to display in the message section
+	 * @param cancelSettings
+	 * 		cancelSettings[1] true indicates ignoring mouse clicks
+	 *
+	 * @return value
+	 *		One of the items of origionalChoices
 	 */
-	getChoice(origionalChoices, message := "", optionalArgs := "")
-	{	this.setClearKeys(optionalArgs)
-		;you cannot ignore the escape key when getting input
-		this.ignoreEsc := false
+	getChoice(origionalChoices, message := "", cancelSettings := "")
+	{	this.setClearKeys(cancelSettings)
 		selection := ""
 		oneChar := ""
-		
+		filteredChoices := origionalChoices
 		;get the input
 		while true
-		{	filteredChoices := this.filterChoices(origionalChoices, selection)
-			this.display(message, this.arrayToString(filteredChoices), selection)
+		{	this.display(message, this.arrayToString(filteredChoices), selection)
 			oneChar := this.getNextChar()
 			if(oneChar == "cancelled")
 			{	this.hide()
@@ -796,121 +938,213 @@ class OnScreen
 			{	break
 			} else if(oneChar == "backspace")
 			{	StringTrimRight, selection, selection, 1
+				filteredChoices := this.filterChoices(origionalChoices, selection)
+			} else if(oneChar == "`t")
+			{	;a tab rotates the list of choices
+				this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
 			} else
 			{	selection .= oneChar
+				;order the list of choices depending on the input from the user
+				filteredChoices := this.filterChoices(origionalChoices, selection)
 			}
 		}
 		this.hide()
-		;get the input
-		return filteredChoices.maxIndex() > 0 ? filteredChoices[1] : selection
+		;return the top element that is being displayed to the user
+		return filteredChoices[filteredChoices.minIndex()]
 	}
 	/*
 	 * Gets input from the user.
-	 * usage: 
-	 * getInput(message to display[, ignore mouse click = false])
+	 * @param message
+	 * 		A string to display to the user
+	 * @param cancelSettings
+	 * 		cancelSettings[1] true indicates ignoring mouse clicks
+	 * 		cancelSettings[2] true indicates ignoring the escape key
+	 *
+	 * @return value
+	 *		The input
 	 */
-	getInput(message, optionalArgs := "")
-	{	this.setClearKeys(optionalArgs)
-		;you cannot ignore the escape key when getting input
-		this.ignoreEsc := false
+	getInput(message, cancelSettings := "")
+	{	this.setClearKeys(cancelSettings)
+		
+		;required for the display method
 		choices := ""
-		selection := ""
-		oneChar := ""
+		;the input variable
+		input := ""
 		
 		;get the input
 		while true
-		{	this.display(message, choices, selection)
+		{	this.display(message, choices, input)
 			oneChar := this.getNextChar()
 			if(oneChar == "cancelled")
-			{	selection := "cancelled"
+			{	input := "cancelled"
 				break
 			} else if(oneChar == "end")
 			{	break
 			} else if(oneChar == "backspace")
-			{	StringTrimRight, selection, selection, 1
+			{	StringTrimRight, input, input, 1
 			} else
-			{	selection .= oneChar
+			{	input .= oneChar
 			}
 		}
 		this.hide()
-		return selection
+		return input
 	}
 	
-	/* Eventually I want to make this intelligent
-	 * now it sorts a given array of strings by how similar they are to the given string filter
+	/*	Sorts an array of strings based on their similarity to a given string. 
+	 *	the origional array is not modified
+	 *	@param choices
+	 *		An array of strings
+	 * 	@param filter
+	 *		A string
+	 *
+	 *	@return value
+	 *		An array containing all the elements of choices but ordered by similarity to filter
 	 */
 	filterChoices(choices, filter)
-	{	if(filter == "")
+	{	;If there is no filter then return choices unchanged
+		if(filter == "")
 		{	return choices
 		}
-		sortedChoices := object()
-		returnArray := Object()
-		;~ returnString := ""
-		filterChars := StrSplit(filter)
+		;an array to insert the strings into. A lower index indicates a closer relation to filter
+		returnArray := object()
+		
 		for key, choice in choices
-		{	score := 0
-			consecutiveCharReward := 1
-			bonus := 0
-			for index, char in filterChars
-			{	if((found := InStr(choice, char)))
-				{	if(found == 1 && index == 1)
-					{	;the first char in the filter matches the first char of the choice
-						bonus := 2
+		{	;how similar the string is to filter
+			score := 0
+			compareString := filter
+			
+			;the filter is trimmed from the left a character at a time. If the remaining 
+			;filter matches some part of the choice string then the choices score is increased
+			while(compareString)
+			{	;Bigger string matches are worth more
+				bonus := StrLen(compareString) * 2
+				
+				;Does the remaining filter exist within the choice string (case sensitive)
+				if(pos := RegExMatch(choice, escapeRegex(compareString)))
+				{	score += bonus
+					;if it is at the start then double the score
+					if(pos == 1)
+					{	score += bonus
 					}
-					if(found == index)
-					{	bonus *= 2
+				}
+				
+				;if it is not the same case?
+				if(pos := RegExMatch(choice, "i)" escapeRegex(compareString)))
+				{	score += bonus
+					if(pos == 1)
+					{	score += bonus
 					}
-					;the more consecutive matching chars the higher the score
-					consecutiveCharReward *= 2
-					score += consecutiveCharReward + bonus
-				} else
-				{	consecutiveCharReward := 1
-					bonus := 1
-				}	
+				}
+				
+				;does it exist not at the start but as word within the choice?
+				if(RegExMatch(choices, "\W" escapeRegex(compareString)))
+				{	score += bonus
+				}
+				
+				;if the string matches exactly then its score is bumped up 
+				if(RegExMatch(choice, "i)^" escapeRegex(compareString) "$"))
+				{	score *= 100
+				}
+				StringTrimLeft, compareString, compareString, 1
 			}
-			while(sortedChoices.hasKey(score))
+			
+			;items with the same score are moved the the next lowest free index.
+			;If the scores are too close together then the ordering is lost
+			score *= -1000
+			while(returnArray.hasKey(score))
 			{ ;increment score until there is a free spot
 				score++
 			}
-			sortedChoices.Insert(score, choice)
+			returnArray.Insert(score, choice)
 		}
-		
-		while((highestScore := sortedChoices.remove(sortedChoices.maxIndex())) != "")
-		{	returnArray.insert(highestScore)
-		}
-		;~ while((temp := sortedChoices.remove(sortedChoices.maxIndex())) != "")
-		;~ {	
-			;~ returnString .= temp "`n"
-		;~ }
-		;~ return returnString
 		return returnArray
 	}
 	
-	/* Gets one character from the user 
-	 * returns "cancelled" if the escape key is pressed 
-	 * returns "end" if return was pressed
-	 * takes a string and returns that string with the next character appeneded to it
+	/* Gets one character from the keyboard. In order to not block alt-tab type
+	 * combinations gathering input is suspended when alt, ctrl or win keys are pressed
+	 * and resumed when the key is released.
+	 *
+	 * @return value
+	 *		a single character 
+	 *		or 'backspace' if backspace was pressed 
+	 *		or 'end' if enter was pressed
+	 *		or 'cancelled' if escape was pressed
 	 */
 	getNextChar()
 	{	this.waitingForInput := true
-		input, oneChar, L1,{Esc}{BackSpace}{enter}
+		input, oneChar, L1,{Esc}{BackSpace}{enter}{Lalt}{RAlt}{Lctrl}{RCtrl}{LWin}{RWin}
 		this.waitingForInput := false
 		if(ErrorLevel == "EndKey:Backspace")
 		{ 	return "backspace"
 		} else if(ErrorLevel == "EndKey:Escape")
 		{	return "cancelled"
-		}
-		if(InStr(errorLevel, "EndKey:"))
+		}else if(ErrorLevel == "EndKey:Enter")
 		{	return "end"
+		} else if(InStr(errorLevel, "EndKey:"))
+		{	StringReplace, keyName, ErrorLevel, EndKey:
+			send {%keyName% down}
+			KeyWait, % keyName
+			return this.getNextChar()
 		}
 		return oneChar
 	}
+	
+	/*	Takes an array and either makes the first element the last or the opposite
+	 *	this function changes the origional array
+	 *	@param theArray
+	 *		an array containing any type of element
+	 *	@param reverse
+	 *		A boolean. if true the last element is made the first
+	 */
+	firstIsLast(ByRef theArray, reverse)
+	{	if(reverse)
+		{	removed := theArray.remove(theArray.maxIndex())
+			theArray.insert(theArray.minIndex() - 1, removed)
+		} else
+		{	removed := theArray.remove(theArray.minIndex())
+			theArray.insert(theArray.maxIndex() + 1, removed)
+		}
+		return
+	}
+	
+	/*	Converts an array to a string
+	 */
 	arrayToString(theArray)
 	{	theString := ""
 		for key, aString in theArray
-		{	theString .= aString "`n"
+		{	if(trim(aString) == "")
+			{	continue
+			}
+			theString .= aString "`n"
 		}
 		return theString
 	}	
+	
+	/*	swaps between high vis and normal display modes
+	 */
+	toggleVisiblitySettings()
+	{	SetTimer, RemoveToolTip, Off
+		SetTimer, removeTooltip, 2000
+		GuiControlGet, message, splash:, static5
+		GuiControlGet, input, splash:, % "static" this.choiceOffput + 5
+		GuiControlGet, selection, splash:, % "static" this.selectionOffput + 5
+		if(this.visiblitySetting == 1)
+		{	this.visiblitySetting := 5
+			this.fillColor := this.highVisFillColor
+			ToolTip, High visiblity menu turned ON
+		} else
+		{	this.visiblitySetting := 1
+			this.fillColor := this.regularFillColor
+			ToolTip, High visiblity menu turned OFF
+		}
+		this.initialiseGui(message, input, selection, true)
+		return	
+	}
 }
+removeTooltip:
+{	SetTimer, RemoveToolTip, Off
+	ToolTip
+	return
+}
+
 ;JPGIncWinscriptFlag End display

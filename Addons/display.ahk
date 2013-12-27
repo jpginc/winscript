@@ -1,29 +1,68 @@
-﻿/* A class that is able to display a message and/or present a list of items 
- * for the user to select from
+﻿/* A class that is able to display text to and get input from the user
+ * 
+ * The display has two modes (which can be switched between using capslock+v
+ * whenever the display is active) high visibility and normal. High visibility
+ * uses 5 gui text elements to make the text displayed appear to have a border
+ * and makes it readable on any background color (where as black text is difficult
+ * to read on a black background)
+ *
+ * The alternate display modes were introduced because the display flickers when 
+ * rendering all 5 text elements in high visibility mode.
  */
 class OnScreen
-{	selectionOffput := 5
+{	;the number of gui elements before the first 'selection' gui elements
+	selectionOffput := 5
+	;the number of guil elements before the 'choice' gui elements
 	choiceOffput := 10
+	;The color of the display text
 	fillColor := "Black"
+	;the default color of normal visibility display
 	regularFillColor := "Black"
+	;the fill color of the high visiblity display
 	highVisFillColor := "green"
+	;the outline color for high visibility display
 	strokeColor := "Yellow"
 	fontSize := 25
+	
+	;whether to clear the display on a click
 	ignoreMouseClick := false
+	;whether to clear the display on the escape key
 	ignoreEsc := false
+	
+	;an instance of the Controller class
 	controller := ""
+	
+	;whether the gui is currently visible or not
 	guiVisible := false
+	;whether we are waiting for user input
 	waitingForInput := false
+	
+	;the numer of gui elements to render. 1 for normal display 5 for high vis
 	visiblitySetting := 1
-	/* 
-	 * Creates a gui 
+	
+	/* initialises the class
+	 * @param controller
+	 * 		an instance of the Controller class
 	 */
 	__New(controller)
 	{	this.initialiseGui()
 		this.controller := controller
 		return this
 	}
-	;not sure why but selection and input needed to be swapped....
+	
+	/*	Creates the display. There are three sections:
+	 * 		message at the top, centered
+	 *		input just below message, centered
+	 *		choices below input left aligned
+	 *	@param message
+	 *		an optional string to display in the message section 
+	 *	@param selection
+	 *		optional string to display in the selection section
+	 *	@param input
+	 *		optional string to display in the input section
+	 * 	@param doShow
+	 *		optional boolean which indicates if the window should be shown immediately
+	 */
 	initialiseGui(message := "", selection := "", Input := "", doShow := false)
 	{	if(this.visiblitySetting != 1)
 		{	messageOutline := message
@@ -69,6 +108,9 @@ class OnScreen
 		return
 	}
 	
+	/*	If ignoreMouseClicks is set to true then this function does nothing
+	 *	otherwise it clears the screen and cancels input
+	 */
 	mouseClick()
 	{	if(this.ignoreMouseClick)
 		{	return
@@ -76,6 +118,9 @@ class OnScreen
 		return this.hide()
 	}
 	
+	/*	If ignoreEsc is set to true then this function does nothing
+	 *	otherwise it clears the screen and cancels input
+	 */
 	esc()
 	{	if(this.ignoreEsc)
 		{	return
@@ -83,18 +128,19 @@ class OnScreen
 		return this.hide()
 	}
 	
+	/* Sets the text to appear on the screen. 
+	 * Sets the guiVisible variable to true
+	 * @param message
+	 *		A string for the message section
+	 * @param choices
+	 *		A string for the choices section
+	 * @param selection
+	 *		A string for the selection section
+	 */
 	display(message, choices, selection)
-	{	if(params.maxIndex())
-		{	this.ignoreMouseClick := params[1]
-			this.ignoreEsc := params.maxIndex() > 1 ? params[2] : false
-		}
-		;the message
-		Loop, % this.visiblitySetting
+	{	Loop, % this.visiblitySetting
 		{	GuiControl, splash:text, % "static" 6 - A_index, % message
-		}
-		;the choices
-		loop, % this.visiblitySetting
-		{	GuiControl, splash:text, % "static" 6 - A_index + this.selectionOffput, % selection
+			GuiControl, splash:text, % "static" 6 - A_index + this.selectionOffput, % selection
 			GuiControl, splash:text, % "static" 6 - A_index + this.choiceOffput, % choices
 		}
 		Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu +Owner
@@ -104,8 +150,12 @@ class OnScreen
 		return
 	}
 	
-	/*
-	 * clear the display
+	/*	If we are waiting for input then the input is canceled. The gui isn't hidden
+	 * 	in this case because in the cancelation process the gui will be hidden anyway.
+	 *	
+	 *	If we aren't waiting for the input then the gui is simply hidden and guiVisible is set to false
+	 *	
+	 *	If neither is true then nothing happens
 	 */
 	hide()
 	{	if(this.waitingForInput)
@@ -124,10 +174,9 @@ class OnScreen
 	
 	/*
 	 * Sets whether or not a click/escape key will clear the screen or not
-	 * @params[1] 
-	 * 		true indicates ignoring mouse clicks
-	 * @params[2]
-	 *		true indicates ignoring the escape key
+	 * @param keys 
+	 * 		keys[1] true indicates ignoring mouse clicks
+	 * 		keys[2] true indicates ignoring the escape key
 	 */
 	setClearKeys(keys)
 	{	this.ignoreMouseClick := keys.maxIndex() > 0 ? keys[1] : false
@@ -138,12 +187,15 @@ class OnScreen
 	/*
 	 * Displays the given message. By default mouseclicks and the escape button 
 	 * clear the message from the screen. Pass the optional arguments to override this behaviour.
-	 * If you wish to clear the display yourself use the clear() function
-	 * usage:
-	 * showMessage(message to display[, array[1] = ignoreMouseClick, array[2] = ignoreEsc])
+	 * If you wish to clear the display yourself use the hide() function
+	 * @param message
+	 *		the string to display
+	 *	@param cancelSettings
+	 * 		cancelSettings[1] true indicates ignoring mouse clicks
+	 * 		cancelSettings[2] true indicates ignoring the escape key
 	 */
-	showMessage(message, optionalArgs := "")
-	{	this.setClearKeys(optionalArgs)
+	showMessage(message, cancelSettings := "")
+	{	this.setClearKeys(cancelSettings)
 		this.display(message, "", "")
 		return
 	}
@@ -151,14 +203,23 @@ class OnScreen
 	 * Displays the given array of choices on the screen and gets input until the user selects
 	 * one of the choices. By default mouseclicks clear the message from the screen. Pass the 
 	 * optional arguments to override this behaviour. If you wish to clear the display yourself 
-	 * use the clear() function
-	 * usage:
-	 * getChoices(array of Choices[, message to display = "", ignoreMouseClick = false])
+	 * use the hide() function
+	 *
+	 * Please note that you cannot ignore the escape key when getting input from the user because
+	 * the input function captures the escape key as an 'end input' flag
+	 *
+	 * @param origionalChoices
+	 *		An array of choices to display to the user. 
+	 * @param message
+	 *		A string to display in the message section
+	 * @param cancelSettings
+	 * 		cancelSettings[1] true indicates ignoring mouse clicks
+	 *
+	 * @return value
+	 *		One of the items of origionalChoices
 	 */
-	getChoice(origionalChoices, message := "", optionalArgs := "")
-	{	this.setClearKeys(optionalArgs)
-		;you cannot ignore the escape key when getting input
-		this.ignoreEsc := false
+	getChoice(origionalChoices, message := "", cancelSettings := "")
+	{	this.setClearKeys(cancelSettings)
 		selection := ""
 		oneChar := ""
 		filteredChoices := origionalChoices
@@ -174,114 +235,146 @@ class OnScreen
 			} else if(oneChar == "backspace")
 			{	StringTrimRight, selection, selection, 1
 				filteredChoices := this.filterChoices(origionalChoices, selection)
-			} else if(oneChar == "tab")
-			{	this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
+			} else if(oneChar == "`t")
+			{	;a tab rotates the list of choices
+				this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
 			} else
 			{	selection .= oneChar
+				;order the list of choices depending on the input from the user
 				filteredChoices := this.filterChoices(origionalChoices, selection)
 			}
 		}
 		this.hide()
-		;get the input
+		;return the top element that is being displayed to the user
 		return filteredChoices[filteredChoices.minIndex()]
 	}
 	/*
 	 * Gets input from the user.
-	 * usage: 
-	 * getInput(message to display[, ignore mouse click = false])
+	 * @param message
+	 * 		A string to display to the user
+	 * @param cancelSettings
+	 * 		cancelSettings[1] true indicates ignoring mouse clicks
+	 * 		cancelSettings[2] true indicates ignoring the escape key
+	 *
+	 * @return value
+	 *		The input
 	 */
-	getInput(message, optionalArgs := "")
-	{	this.setClearKeys(optionalArgs)
-		;you cannot ignore the escape key when getting input
-		this.ignoreEsc := false
+	getInput(message, cancelSettings := "")
+	{	this.setClearKeys(cancelSettings)
+		
+		;required for the display method
 		choices := ""
-		selection := ""
-		oneChar := ""
+		;the input variable
+		input := ""
 		
 		;get the input
 		while true
-		{	this.display(message, choices, selection)
+		{	this.display(message, choices, input)
 			oneChar := this.getNextChar()
 			if(oneChar == "cancelled")
-			{	selection := "cancelled"
+			{	input := "cancelled"
 				break
 			} else if(oneChar == "end")
 			{	break
 			} else if(oneChar == "backspace")
-			{	StringTrimRight, selection, selection, 1
+			{	StringTrimRight, input, input, 1
 			} else
-			{	selection .= oneChar
+			{	input .= oneChar
 			}
 		}
 		this.hide()
-		return selection
+		return input
 	}
 	
-	/* Eventually I want to make this intelligent
-	 * now it sorts a given array of strings by how similar they are to the given string filter
+	/*	Sorts an array of strings based on their similarity to a given string. 
+	 *	the origional array is not modified
+	 *	@param choices
+	 *		An array of strings
+	 * 	@param filter
+	 *		A string
+	 *
+	 *	@return value
+	 *		An array containing all the elements of choices but ordered by similarity to filter
 	 */
 	filterChoices(choices, filter)
-	{	if(filter == "")
+	{	;If there is no filter then return choices unchanged
+		if(filter == "")
 		{	return choices
 		}
-		sortedChoices := object()
-		returnArray := Object()
-		;~ returnString := ""
+		;an array to insert the strings into. A lower index indicates a closer relation to filter
+		returnArray := object()
+		
 		for key, choice in choices
-		{	score := 0
+		{	;how similar the string is to filter
+			score := 0
 			compareString := filter
+			
+			;the filter is trimmed from the left a character at a time. If the remaining 
+			;filter matches some part of the choice string then the choices score is increased
 			while(compareString)
-			{	bonus := StrLen(compareString) * 2
+			{	;Bigger string matches are worth more
+				bonus := StrLen(compareString) * 2
+				
+				;Does the remaining filter exist within the choice string (case sensitive)
 				if(pos := RegExMatch(choice, escapeRegex(compareString)))
 				{	score += bonus
+					;if it is at the start then double the score
 					if(pos == 1)
 					{	score += bonus
 					}
 				}
+				
+				;if it is not the same case?
 				if(pos := RegExMatch(choice, "i)" escapeRegex(compareString)))
 				{	score += bonus
 					if(pos == 1)
 					{	score += bonus
 					}
 				}
+				
+				;does it exist not at the start but as word within the choice?
 				if(RegExMatch(choices, "\W" escapeRegex(compareString)))
 				{	score += bonus
 				}
+				
+				;if the string matches exactly then its score is bumped up 
 				if(RegExMatch(choice, "i)^" escapeRegex(compareString) "$"))
 				{	score *= 100
 				}
 				StringTrimLeft, compareString, compareString, 1
 			}
-			score *= 100
-			while(sortedChoices.hasKey(score))
+			
+			;items with the same score are moved the the next lowest free index.
+			;If the scores are too close together then the ordering is lost
+			score *= -1000
+			while(returnArray.hasKey(score))
 			{ ;increment score until there is a free spot
-				score--
+				score++
 			}
-			sortedChoices.Insert(score, choice)
-		}
-		
-		while((highestScore := sortedChoices.remove(sortedChoices.maxIndex())) != "")
-		{	returnArray.insert(highestScore)
+			returnArray.Insert(score, choice)
 		}
 		return returnArray
 	}
 	
-	/* Gets one character from the user 
-	 * returns "cancelled" if the escape key is pressed 
-	 * returns "end" if return was pressed
-	 * takes a string and returns that string with the next character appeneded to it
+	/* Gets one character from the keyboard. In order to not block alt-tab type
+	 * combinations gathering input is suspended when alt, ctrl or win keys are pressed
+	 * and resumed when the key is released.
+	 *
+	 * @return value
+	 *		a single character 
+	 *		or 'backspace' if backspace was pressed 
+	 *		or 'end' if enter was pressed
+	 *		or 'cancelled' if escape was pressed
 	 */
 	getNextChar()
 	{	this.waitingForInput := true
-		input, oneChar, L1,{Esc}{BackSpace}{enter}{tab}{Lalt}{RAlt}{Lctrl}{RCtrl}{LWin}{RWin}
+		input, oneChar, L1,{Esc}{BackSpace}{enter}{Lalt}{RAlt}{Lctrl}{RCtrl}{LWin}{RWin}
 		this.waitingForInput := false
 		if(ErrorLevel == "EndKey:Backspace")
 		{ 	return "backspace"
 		} else if(ErrorLevel == "EndKey:Escape")
 		{	return "cancelled"
-		} else if(ErrorLevel == "EndKey:Tab")
-		{	return "tab"
-		} else if(ErrorLevel == "EndKey:Enter")
+		}else if(ErrorLevel == "EndKey:Enter")
 		{	return "end"
 		} else if(InStr(errorLevel, "EndKey:"))
 		{	StringReplace, keyName, ErrorLevel, EndKey:
@@ -291,6 +384,14 @@ class OnScreen
 		}
 		return oneChar
 	}
+	
+	/*	Takes an array and either makes the first element the last or the opposite
+	 *	this function changes the origional array
+	 *	@param theArray
+	 *		an array containing any type of element
+	 *	@param reverse
+	 *		A boolean. if true the last element is made the first
+	 */
 	firstIsLast(ByRef theArray, reverse)
 	{	if(reverse)
 		{	removed := theArray.remove(theArray.maxIndex())
@@ -301,6 +402,9 @@ class OnScreen
 		}
 		return
 	}
+	
+	/*	Converts an array to a string
+	 */
 	arrayToString(theArray)
 	{	theString := ""
 		for key, aString in theArray
@@ -311,6 +415,9 @@ class OnScreen
 		}
 		return theString
 	}	
+	
+	/*	swaps between high vis and normal display modes
+	 */
 	toggleVisiblitySettings()
 	{	SetTimer, RemoveToolTip, Off
 		SetTimer, removeTooltip, 2000
@@ -327,7 +434,7 @@ class OnScreen
 			ToolTip, High visiblity menu turned OFF
 		}
 		this.initialiseGui(message, input, selection, true)
-		return
+		return	
 	}
 }
 removeTooltip:

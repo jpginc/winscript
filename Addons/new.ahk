@@ -69,5 +69,6 @@ esc::
 			, addons\%scriptName%
 		controller.edit("addons\" scriptName)
 		controller.showMessage("The file " scriptName " has been created in the Addons folder. When you have finished creating the script use the 'Add' shortcut to include it into the main script")
+		return this
 	}
 }

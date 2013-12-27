@@ -20,4 +20,7 @@ IfNotExist, Addons
 }
 GlobalController := new Controller(JPGIncShortcuts, JPGIncCodeSegments)
 return
+escapeRegex(theString) 
+{	return "\Q" theString "\E"
+}
 ;JPGIncWinscriptFlag End autoExecute
