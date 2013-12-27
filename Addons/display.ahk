@@ -159,9 +159,8 @@ class OnScreen
 	 */
 	hide()
 	{	if(this.waitingForInput)
-		{	Gui splash: +lastfound
-			WinActivate, A
-			send {esc}
+		{	;cause the other input to cancel
+			input, notNeeded, T0.1
 			return
 		}
 		if(this.guiVisible)
@@ -372,7 +371,7 @@ class OnScreen
 		this.waitingForInput := false
 		if(ErrorLevel == "EndKey:Backspace")
 		{ 	return "backspace"
-		} else if(ErrorLevel == "EndKey:Escape")
+		} else if(ErrorLevel == "EndKey:Escape" || ErrorLevel == "NewInput")
 		{	return "cancelled"
 		}else if(ErrorLevel == "EndKey:Enter")
 		{	return "end"
