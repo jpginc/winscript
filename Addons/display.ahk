@@ -23,6 +23,9 @@ class OnScreen
 	;the outline color for high visibility display
 	strokeColor := "Yellow"
 	fontSize := 25
+	;This value is changed whenever input is requested. Checking if this value has changed
+	;will indicate if input was interrupted
+	threadNumber := 1
 	
 	;whether to clear the display on a click
 	ignoreMouseClick := false
@@ -219,13 +222,14 @@ class OnScreen
 	 */
 	getChoice(origionalChoices, message := "", cancelSettings := "")
 	{	this.setClearKeys(cancelSettings)
+		this.threadNumber++
 		selection := ""
 		oneChar := ""
 		filteredChoices := origionalChoices
 		;get the input
 		while true
 		{	this.display(message, this.arrayToString(filteredChoices), selection)
-			oneChar := this.getNextChar()
+			oneChar := this.getNextChar(this.threadNumber)
 			if(oneChar == "cancelled")
 			{	this.hide()
 				return "cancelled"
@@ -260,7 +264,7 @@ class OnScreen
 	 */
 	getInput(message, cancelSettings := "")
 	{	this.setClearKeys(cancelSettings)
-		
+		this.threadNumber++
 		;required for the display method
 		choices := ""
 		;the input variable
@@ -269,7 +273,7 @@ class OnScreen
 		;get the input
 		while true
 		{	this.display(message, choices, input)
-			oneChar := this.getNextChar()
+			oneChar := this.getNextChar(this.threadNumber)
 			if(oneChar == "cancelled")
 			{	input := "cancelled"
 				break
@@ -365,9 +369,15 @@ class OnScreen
 	 *		or 'end' if enter was pressed
 	 *		or 'cancelled' if escape was pressed
 	 */
-	getNextChar()
-	{	this.waitingForInput := true
+	getNextChar(interrupted)
+	{	if(interrupted != this.threadNumber)
+		{	return "cancelled"
+		}
+		this.waitingForInput := true
 		input, oneChar, L1,{Esc}{BackSpace}{enter}{Lalt}{RAlt}{Lctrl}{RCtrl}{LWin}{RWin}
+		if(interrupted != this.threadNumber)
+		{	return "cancelled"
+		}
 		this.waitingForInput := false
 		if(ErrorLevel == "EndKey:Backspace")
 		{ 	return "backspace"
@@ -379,7 +389,7 @@ class OnScreen
 		{	StringReplace, keyName, ErrorLevel, EndKey:
 			send {%keyName% down}
 			KeyWait, % keyName
-			return this.getNextChar()
+			return this.getNextChar(interrupted)
 		}
 		return oneChar
 	}
