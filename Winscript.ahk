@@ -70,466 +70,6 @@ removeFromArray(theArray, item)
     return
 }
 ;JPGIncWinscriptFlag End autoExecute
-
-;JPGIncWinscriptFlag End autoExecute
-;JPGIncWinscriptFlag End autoExecute
-;JPGIncWinscriptFlag Start remove
-/* this function allows the user to remove a code segment from the running code
- * The user is presented with a list of code segments and, if they select one
- * it is removed from the running code and the script is reloaded.
- * @param controller
- *		An instance of the Controller class
- */
-remove(controller)
-{	while(true)
-	{	toRemove := controller.getChoice(controller.getAllShortcuts(), "Select a code segment/shortcut to remove")
-		if(toRemove == "cancelled")
-		{	return
-		}
-		if(toRemove == "autoExecute")
-		{	MsgBox, , ERROR, Error you cannot remove the autoExecute section. Use edit/update instead
-			return
-		}
-		if(controller.codeOrShortcutExists(toRemove))
-		{	MsgBox, 4, Warning, Are you sure you wish to remove the code segment %toRemove%?
-			IfMsgBox, No
-			{	continue
-			}
-			r := new recompiler()
-			r.remove(toRemove)
-		} else
-		{	MsgBox, , Error, Error that shortcut does not exist
-		}
-	}
-	return 
-}
-;JPGIncWinscriptFlag End remove
-;JPGIncWinscriptFlag Start edit
-/* This function opens a code segments file for editing 
- * as long as the file is present in the Addons folder
- * @param controller
- *		An instance of the Controller class
- */
-edit(controller)
-{	while(true)
-	{	;get the name of the code segment to edit
-		toEdit := controller.getChoice(controller.getAllShortcuts(), "Select a code segment/shortcut to edit")
-		if(toEdit == "cancelled")
-		{	return
-		}
-		if(controller.codeOrShortcutExists(toEdit)) ;this isn't really neccesarry...
-		{	IfNotExist, % A_ScriptDir "\Addons\" toEdit ".ahk"
-			{	MsgBox, , JPGInc ERROR, ERROR file does not exists in the Addons folder.
-				return
-			}
-			run, edit "%A_ScriptDir%\Addons\%toEdit%.ahk", , UseErrorLevel
-			if(errorLevel)
-			{	run, % "notepad """ A_ScriptDir "\Addons\" toEdit ".ahk"""
-			}
-			return
-		} else
-		{	MsgBox, , JPGInc ERROR, ERROR that shortcut does not exist!
-		}
-	}
-}
-;JPGIncWinscriptFlag End edit
-;JPGIncWinscriptFlag Start add
-/* This function merges a new code segment into the running code.
- * The user is prompted for a shortcut name which must not be
- * the same as an already merged code segment. 
- * 
- * The code segment may be added as a new 'shortcut' in which case
- * a shortcut is added to the default shortcut list. If a file exists
- * in the Addons folder with the same name as the shortcut then it is
- * used otherwise the user is prompted to select a file. 
- * 
- * After the code segment is added the script is reloaded
- * @param controller
- *		An instance of the Controller class
- */
-add(controller)
-{	while(true)
-	{	;get the name of the new code segment
-		newShortcut := controller.getInput("Type a shortcut name.")
-		if(newShortcut == "cancelled")
-		{	return
-		}
-		;make sure the name is valid
-		if(! controller.isValidShortcut(newShortcut))
-		{	MsgBox, , JPGInc ERROR, Error that shortcut is invalid or already in use
-		} else
-		{	;load the code
-			IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
-			{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
-			} else
-			{	controller.showMessage("Select the file to load", ignoreMouseClicks := true)
-				FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
-				if(errorlevel)
-				{	controller.clearDisplay()
-					return ;the user cancelled
-				}
-				controller.clearDisplay()
-				FileRead, newCode, % dir
-			}
-			if(! newCode)
-			{	MsgBox, , JPGInc ERROR, Error file could not be read or was empty
-				return
-			}
-			recomp := new recompiler(controller)
-			MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
-			IfMsgBox Yes
-			{	recomp.addShortcut(newShortcut, newCode)
-			} else 
-			{	recomp.add(newShortcut, newCode)
-			}	
-			return
-		}
-	}
-}
-;JPGIncWinscriptFlag End add
-;JPGIncWinscriptFlag Start update
-/* This function updates a code segment within the running code
- * 
- * The user is presented with a list of code segments and if one
- * is selected it is removed and replaced with the new code
- *
- * If a file exists in the addons folder with the same name of
- * the code segment that the user selects then the contents of 
- * that file is used to replace the removed code otherwise the
- * user is prompted to select the new file
- *
- * @param controller
- * 		An instance of the Controller class
- */
-update(controller)
-{	while(true)
-	{	;get the name of the code segment to update
-		toUpdate := controller.getChoice(controller.getAllShortcuts(), "Select a code segment to update")
-		if(toUpdate == "cancelled")
-		{	return
-		}
-		if(controller.codeOrShortcutExists(toUpdate))
-		{	;check if a file with the same name exists in the addons folder
-			IfExist, % A_scriptdir "\Addons\" toUpdate ".ahk"
-			{	FileRead, newCode, % A_ScriptDir "\Addons\" toUpdate ".ahk"
-			} else
-			{	controller.showMessage("Select the file to load", ignoreMouseClicks := true)
-				FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
-				if(errorlevel)
-				{	controller.clearDisplay()
-					return ;the user cancelled
-				}
-				controller.clearDisplay()
-				FileRead, newCode, % dir
-			}
-			if(! newCode)
-			{	MsgBox, , Error, Error file could not be read or was empty
-				return
-			}
-			MsgBox, 4, Warning, Are you sure you wish to update the shortcut %toUpdate%?
-			IfMsgBox, No
-			{	continue
-			}
-			r := new recompiler()
-			r.update(toUpdate, newCode)
-		} else
-		{	MsgBox, , Error, Error that shortcut does not exist
-		}
-	}
-	return 
-}
-;JPGIncWinscriptFlag End update
-;JPGIncWinscriptFlag Start new
-class new
-{	
-	
-	__new(controller)
-	{	shortcutName := scriptName := controller.getInput("Enter the name of your new script. Ideally the name will be the same as the shortcut you intend to use")
-		if(scriptName == "cancelled" || trim(scriptName) == "")
-		{	return
-		}
-		StringReplace, shortcutName, shortcutName, %A_space%, _, All
-		IfNotInString, scriptName, .
-		{	scriptname .= ".ahk"
-		}
-		{	IfExist, addons\%scriptName%
-			{	MsgBox, 4, JPGInc Warning, Warning, the file %scriptName% already exists in the Addons folder. Would you like to open it for editing?
-				IfMsgBox, Yes
-				{	controller.edit("addons\" scriptName)
-				}
-				return
-			}
-		}
-		FileAppend,
-			(
-/* If you add this file to Winscript using the 'add' shortcut when the shortcut
- * is selected the program will first try to instanciate a class with the same 
- * name, then try and run a function with the same name and finally jump to 
- * a label with the same name. 
- *
- */
-;uncomment this if you want to create a class
-/*
-class %shortcutName%
-{	__new(controller)
-	{	controller.showMessage("created the class")
-		return this
-	}
-}
-*/
-;uncomment this if you want to use a function
-/*
-%shortcutName%(controller)
-{	controller.showMessage("Called the function")
-	return
-}
-*/
-;uncomment this if you want to use a label
-/*
-%shortcutName%:
-{	globalController.showMessage("Called the label")
-	return
-}
-*/
-/* When the shortcut is launched the global controllers 'context' is set to the
- * name of the shortcut. This allows you to activate hotkeys only when your script
- * has been launched
- */
-;place the hotkeys you wish to be active while running this script here
-#if GlobalController.getContext() == "%shortcutName%"
-;by default the escape key will cancel your shortcut
-esc::
-{	globalController.clearDisplay()
-	globalController.setContext("")
-	return
-}
-;place any hotkeys you want to be active all the time here
-#if
-			)
-			, addons\%scriptName%
-		controller.edit("addons\" scriptName)
-		controller.showMessage("The file " scriptName " has been created in the Addons folder. When you have finished creating the script use the 'Add' shortcut to include it into the main script")
-		return this
-	}
-}
-;JPGIncWinscriptFlag End new
-;JPGIncWinscriptFlag Start unpack
-unpack()
-{	IfNotExist, Addons
-	{	FileCreateDir, Addons
-	}
-	recompiler := new recompiler()
-	beforeFlag := recompiler.getBeforeFlag()
-	afterFlag := recompiler.getAfterFlag()
-	source := recompiler.getRunningCode()
-	fileName := ""
-	warnings := ""
-	
-	Loop, parse, source, `n
-	{	if(RegExMatch(A_loopfield, "m)^" beforeFlag))
-		{	filename := RegExReplace(A_loopfield, "m)^" beforeFlag "(.*)\R", "$1")
-			IfNotInString, fileName, .
-			{	filename .= ".ahk"
-			}
-			IfExist, Addons\%fileName%
-			{	warnings .= fileName "`n"
-				filename := "" ;dont append to an already existing file
-			}
-			continue
-		}
-		if(RegExMatch(A_loopfield, "m)^" afterFlag))
-		{	filename := ""
-		}
-		if(filename != "")
-		{	FileAppend, % A_loopfield, Addons\%filename%
-		}
-	}
-	if(warnings)
-	{	MsgBox, , JPGInc Warning, Warning the following files already existed and were not unpacked`n%warnings%
-	} else
-	{	MsgBox, , JPGInc Success, Files unpacked successfully
-	}
-	return
-}
-;JPGIncWinscriptFlag End unpack
-;JPGIncWinscriptFlag Start defaultHotkeys
-#If
-;Capslock + Esc exits the program
-~CapsLock & Esc::
-~Esc & CapsLock::
-{	KeyWait capslock
-	KeyWait esc
-	SetCapsLockState, off
-	ExitApp
-}
-;the default keys to enter 'script' mode are shift and capslock together
-~shift & CapsLock::
-~CapsLock & Shift::
-{	KeyWait shift
-	KeyWait capslock
-	SetCapsLockState, off
-	GlobalController.enterScriptMode()
-	return
-}
-;clicking a mouse button by default will leave script mode
-~LButton::
-~RButton::
-~MButton::
-{	GlobalController.mouseClick()
-	return
-}
-;
-~Esc::
-{	GlobalController.esc()
-	return
-}
-;set the display to be black or outlined
-#if globalController.getContext() != ""
-~capslock & v::
-~v & capslock::
-{	SetCapsLockState, off
-	globalController.toggleHighVisiblity()
-	KeyWait, v
-	return
-}
-;JPGIncWinscriptFlag End defaultHotkeys
-;JPGIncWinscriptFlag Start controller
-class Controller
-{	display := new OnScreen(this)
-	context := ""
-	shortcuts := ""
-	codeSegments := ""
-	allShortcuts := ""
-	
-	__new(shortcuts, codeSegments)
-	{	this.shortcuts := StrSplit(shortcuts, ",")
-		this.shortcuts.remove(this.shortcuts.maxIndex())
-		this.codeSegments := StrSplit(codeSegments, ",")		
-		this.codeSegments.remove(this.codeSegments.maxIndex())
-		this.allShortcuts := StrSplit(shortcuts "," codeSegments, ",")
-		this.allShortcuts.remove(this.allShortcuts.maxIndex())
-		return this
-	}
-	
-	enterScriptMode()
-	{	this.context := "shortcutLauncher"
-		shortcutLauncher(this)
-		return
-	}
-	mouseClick()
-	{	this.display.mouseClick()
-		return
-	}
-	esc()
-	{	this.display.esc()
-		return
-	}
-	showMessage(message, params*)
-	{	return this.display.showMessage(message, params)
-	}
-	clearDisplay()
-	{	return this.display.hide()
-	}
-	getChoice(choices, message := "", params*)
-	{	return this.display.getChoice(choices, message, params)
-	}
-	getInput(message, params*)
-	{	return this.display.getInput(message, params)
-	}
-	setContext(newContext)
-	{	this.context := newContext
-		return
-	}
-	getContext()
-	{	return this.context
-	}
-	getShortcuts()
-	{	return this.shortcuts
-	}
-	getCodeSegments()
-	{	return this.codeSegments
-	}
-	getAllShortcuts()
-	{	return this.allShortcuts
-	}
-	isValidShortcut(newShortcut)
-	{	if(newShortcut == "")
-		{	return false
-		}
-		IfInString, newShortcut, `,
-		{	return false
-		}
-		return ! (this.shortcutExists(newShortcut) || this.codeSegmentExists(newShortcut))
-	}
-	shortcutExists(newShortcut)
-	{	newShortcut := trim(newShortcut)
-		if(newShortcut == "")
-		{	return false
-		}
-		IfInString, newShortcut, `,
-		{	return false
-		}
-		return this.inArray(this.shortcuts, newShortcut)
-	}
-	codeSegmentExists(newShortcut)
-	{	newShortcut := trim(newShortcut)
-		if(newShortcut == "")
-		{	return false
-		}
-		IfInString, newShortcut, `,
-		{	return false
-		}
-		return this.inArray(this.codeSegments, newShortcut)
-	}
-	codeOrShortcutExists(shortcut)
-	{	return this.inArray(this.shortcuts, shortcut) || this.inArray(this.codeSegments, shortcut)
-	}
-	inArray(array, item)
-	{	for key, val in array
-		{	if(val == item)
-			{	return true
-			}
-		}
-		return false
-	}
-	edit(filename)
-	{	Run, edit "%filename%", , UseErrorLevel
-		if(errorlevel)
-		{	run, notepad "%filename%"
-		}
-		return
-	}
-	toggleHighVisiblity()
-	{	this.display.toggleVisiblitySettings()
-		return
-	}
-}
-;JPGIncWinscriptFlag End controller
-;JPGIncWinscriptFlag Start shortcutLauncher
-/* This is the class that will be loaded when entering script mode 
- * Displays a list of shorcuts to choose from
- */
-shortcutLauncher(controller)
-{	className := controller.getChoice(controller.getShortcuts(), "Select script to run")
-	if(className == "cancelled")
-	{	return
-	}
-	StringReplace, className, className, %A_space%, _ , All
-	controller.setContext(className)
-	if(IsObject(%className%))
-	{	new %className%(controller)
-	} else if((argCount := IsFunc(className)))
-	{	if(argCount == 1)
-		{	%className%()
-		} else
-		{	%className%(controller)
-		}
-	} else if(IsLabel(className))
-	{	gosub, %className%
-	}
-	return
-}
-;JPGIncWinscriptFlag End shortcutLauncher
 ;JPGIncWinscriptFlag Start recompiler
 class recompiler
 {
@@ -736,6 +276,463 @@ class recompiler
 	}
 }
 ;JPGIncWinscriptFlag End recompiler
+;JPGIncWinscriptFlag Start unpack
+unpack()
+{	IfNotExist, Addons
+	{	FileCreateDir, Addons
+	}
+	recompiler := new recompiler()
+	beforeFlag := recompiler.getBeforeFlag()
+	afterFlag := recompiler.getAfterFlag()
+	source := recompiler.getRunningCode()
+	fileName := ""
+	warnings := ""
+	
+	Loop, parse, source, `n
+	{	if(RegExMatch(A_loopfield, "m)^" beforeFlag))
+		{	filename := RegExReplace(A_loopfield, "m)^" beforeFlag)
+			IfNotInString, fileName, .
+			{	filename .= ".ahk"
+			}
+			IfExist, Addons\%fileName%
+			{	warnings .= fileName "`n"
+				filename := "" ;dont append to an already existing file
+			}
+			continue
+		}
+		if(RegExMatch(A_loopfield, "m)^" afterFlag))
+		{	filename := ""
+		}
+		if(filename != "")
+		{	FileAppend, % A_loopfield, Addons\%filename%
+		}
+	}
+	if(warnings)
+	{	MsgBox, , JPGInc Warning, Warning the following files already existed and were not unpacked`n%warnings%
+	} else
+	{	MsgBox, , JPGInc Success, Files unpacked successfully
+	}
+	return
+}
+;JPGIncWinscriptFlag End unpack
+;JPGIncWinscriptFlag Start shortcutLauncher
+/* This is the class that will be loaded when entering script mode 
+ * Displays a list of shorcuts to choose from
+ */
+shortcutLauncher(controller)
+{	className := controller.getChoice(controller.getShortcuts(), "Select script to run")
+	if(className == "cancelled")
+	{	return
+	}
+	StringReplace, className, className, %A_space%, _ , All
+	controller.setContext(className)
+	if(IsObject(%className%))
+	{	new %className%(controller)
+	} else if((argCount := IsFunc(className)))
+	{	if(argCount == 1)
+		{	%className%()
+		} else
+		{	%className%(controller)
+		}
+	} else if(IsLabel(className))
+	{	gosub, %className%
+	}
+	return
+}
+;JPGIncWinscriptFlag End shortcutLauncher
+;JPGIncWinscriptFlag Start controller
+class Controller
+{	display := new OnScreen(this)
+	context := ""
+	shortcuts := ""
+	codeSegments := ""
+	allShortcuts := ""
+	
+	__new(shortcuts, codeSegments)
+	{	this.shortcuts := StrSplit(shortcuts, ",")
+		this.shortcuts.remove(this.shortcuts.maxIndex())
+		this.codeSegments := StrSplit(codeSegments, ",")		
+		this.codeSegments.remove(this.codeSegments.maxIndex())
+		this.allShortcuts := StrSplit(shortcuts "," codeSegments, ",")
+		this.allShortcuts.remove(this.allShortcuts.maxIndex())
+		return this
+	}
+	
+	enterScriptMode()
+	{	this.context := "shortcutLauncher"
+		shortcutLauncher(this)
+		return
+	}
+	mouseClick()
+	{	this.display.mouseClick()
+		return
+	}
+	esc()
+	{	this.display.esc()
+		return
+	}
+	showMessage(message, params*)
+	{	return this.display.showMessage(message, params)
+	}
+	clearDisplay()
+	{	return this.display.hide()
+	}
+	getChoice(choices, message := "", params*)
+	{	return this.display.getChoice(choices, message, params)
+	}
+	getInput(message, params*)
+	{	return this.display.getInput(message, params)
+	}
+	setContext(newContext)
+	{	this.context := newContext
+		return
+	}
+	getContext()
+	{	return this.context
+	}
+	getShortcuts()
+	{	return this.shortcuts
+	}
+	getCodeSegments()
+	{	return this.codeSegments
+	}
+	getAllShortcuts()
+	{	return this.allShortcuts
+	}
+	isValidShortcut(newShortcut)
+	{	if(newShortcut == "")
+		{	return false
+		}
+		IfInString, newShortcut, `,
+		{	return false
+		}
+		return ! (this.shortcutExists(newShortcut) || this.codeSegmentExists(newShortcut))
+	}
+	shortcutExists(newShortcut)
+	{	newShortcut := trim(newShortcut)
+		if(newShortcut == "")
+		{	return false
+		}
+		IfInString, newShortcut, `,
+		{	return false
+		}
+		return this.inArray(this.shortcuts, newShortcut)
+	}
+	codeSegmentExists(newShortcut)
+	{	newShortcut := trim(newShortcut)
+		if(newShortcut == "")
+		{	return false
+		}
+		IfInString, newShortcut, `,
+		{	return false
+		}
+		return this.inArray(this.codeSegments, newShortcut)
+	}
+	codeOrShortcutExists(shortcut)
+	{	return this.inArray(this.shortcuts, shortcut) || this.inArray(this.codeSegments, shortcut)
+	}
+	inArray(array, item)
+	{	for key, val in array
+		{	if(val == item)
+			{	return true
+			}
+		}
+		return false
+	}
+	edit(filename)
+	{	Run, edit "%filename%", , UseErrorLevel
+		if(errorlevel)
+		{	run, notepad "%filename%"
+		}
+		return
+	}
+	toggleHighVisiblity()
+	{	this.display.toggleVisiblitySettings()
+		return
+	}
+}
+;JPGIncWinscriptFlag End controller
+;JPGIncWinscriptFlag Start defaultHotkeys
+#If
+;Capslock + Esc exits the program
+~CapsLock & Esc::
+~Esc & CapsLock::
+{	KeyWait capslock
+	KeyWait esc
+	SetCapsLockState, off
+	ExitApp
+}
+;the default keys to enter 'script' mode are shift and capslock together
+~shift & CapsLock::
+~CapsLock & Shift::
+{	KeyWait shift
+	KeyWait capslock
+	SetCapsLockState, off
+	GlobalController.enterScriptMode()
+	return
+}
+;clicking a mouse button by default will leave script mode
+~LButton::
+~RButton::
+~MButton::
+{	GlobalController.mouseClick()
+	return
+}
+;
+~Esc::
+{	GlobalController.esc()
+	return
+}
+;set the display to be black or outlined
+#if globalController.getContext() != ""
+~capslock & v::
+~v & capslock::
+{	SetCapsLockState, off
+	globalController.toggleHighVisiblity()
+	KeyWait, v
+	return
+}
+;JPGIncWinscriptFlag End defaultHotkeys
+;JPGIncWinscriptFlag Start remove
+/* this function allows the user to remove a code segment from the running code
+ * The user is presented with a list of code segments and, if they select one
+ * it is removed from the running code and the script is reloaded.
+ * @param controller
+ *		An instance of the Controller class
+ */
+remove(controller)
+{	while(true)
+	{	toRemove := controller.getChoice(controller.getAllShortcuts(), "Select a code segment/shortcut to remove")
+		if(toRemove == "cancelled")
+		{	return
+		}
+		if(toRemove == "autoExecute")
+		{	MsgBox, , ERROR, Error you cannot remove the autoExecute section. Use edit/update instead
+			return
+		}
+		if(controller.codeOrShortcutExists(toRemove))
+		{	MsgBox, 4, Warning, Are you sure you wish to remove the code segment %toRemove%?
+			IfMsgBox, No
+			{	continue
+			}
+			r := new recompiler()
+			r.remove(toRemove)
+		} else
+		{	MsgBox, , Error, Error that shortcut does not exist
+		}
+	}
+	return 
+}
+;JPGIncWinscriptFlag End remove
+;JPGIncWinscriptFlag Start update
+/* This function updates a code segment within the running code
+ * 
+ * The user is presented with a list of code segments and if one
+ * is selected it is removed and replaced with the new code
+ *
+ * If a file exists in the addons folder with the same name of
+ * the code segment that the user selects then the contents of 
+ * that file is used to replace the removed code otherwise the
+ * user is prompted to select the new file
+ *
+ * @param controller
+ * 		An instance of the Controller class
+ */
+update(controller)
+{	while(true)
+	{	;get the name of the code segment to update
+		toUpdate := controller.getChoice(controller.getAllShortcuts(), "Select a code segment to update")
+		if(toUpdate == "cancelled")
+		{	return
+		}
+		if(controller.codeOrShortcutExists(toUpdate))
+		{	;check if a file with the same name exists in the addons folder
+			IfExist, % A_scriptdir "\Addons\" toUpdate ".ahk"
+			{	FileRead, newCode, % A_ScriptDir "\Addons\" toUpdate ".ahk"
+			} else
+			{	controller.showMessage("Select the file to load", ignoreMouseClicks := true)
+				FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
+				if(errorlevel)
+				{	controller.clearDisplay()
+					return ;the user cancelled
+				}
+				controller.clearDisplay()
+				FileRead, newCode, % dir
+			}
+			if(! newCode)
+			{	MsgBox, , Error, Error file could not be read or was empty
+				return
+			}
+			MsgBox, 4, Warning, Are you sure you wish to update the shortcut %toUpdate%?
+			IfMsgBox, No
+			{	continue
+			}
+			r := new recompiler()
+			r.update(toUpdate, newCode)
+		} else
+		{	MsgBox, , Error, Error that shortcut does not exist
+		}
+	}
+	return 
+}
+;JPGIncWinscriptFlag End update
+;JPGIncWinscriptFlag Start edit
+/* This function opens a code segments file for editing 
+ * as long as the file is present in the Addons folder
+ * @param controller
+ *		An instance of the Controller class
+ */
+edit(controller)
+{	while(true)
+	{	;get the name of the code segment to edit
+		toEdit := controller.getChoice(controller.getAllShortcuts(), "Select a code segment/shortcut to edit")
+		if(toEdit == "cancelled")
+		{	return
+		}
+		if(controller.codeOrShortcutExists(toEdit)) ;this isn't really neccesarry...
+		{	IfNotExist, % A_ScriptDir "\Addons\" toEdit ".ahk"
+			{	MsgBox, , JPGInc ERROR, ERROR file does not exists in the Addons folder.
+				return
+			}
+			run, edit "%A_ScriptDir%\Addons\%toEdit%.ahk", , UseErrorLevel
+			if(errorLevel)
+			{	run, % "notepad """ A_ScriptDir "\Addons\" toEdit ".ahk"""
+			}
+			return
+		} else
+		{	MsgBox, , JPGInc ERROR, ERROR that shortcut does not exist!
+		}
+	}
+}
+;JPGIncWinscriptFlag End edit
+;JPGIncWinscriptFlag Start add
+/* This function merges a new code segment into the running code.
+ * The user is prompted for a shortcut name which must not be
+ * the same as an already merged code segment. 
+ * 
+ * The code segment may be added as a new 'shortcut' in which case
+ * a shortcut is added to the default shortcut list. If a file exists
+ * in the Addons folder with the same name as the shortcut then it is
+ * used otherwise the user is prompted to select a file. 
+ * 
+ * After the code segment is added the script is reloaded
+ * @param controller
+ *		An instance of the Controller class
+ */
+add(controller)
+{	while(true)
+	{	;get the name of the new code segment
+		newShortcut := controller.getInput("Type a shortcut name.")
+		if(newShortcut == "cancelled")
+		{	return
+		}
+		;make sure the name is valid
+		if(! controller.isValidShortcut(newShortcut))
+		{	MsgBox, , JPGInc ERROR, Error that shortcut is invalid or already in use
+		} else
+		{	;load the code
+			IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
+			{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
+			} else
+			{	controller.showMessage("Select the file to load", ignoreMouseClicks := true)
+				FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
+				if(errorlevel)
+				{	controller.clearDisplay()
+					return ;the user cancelled
+				}
+				controller.clearDisplay()
+				FileRead, newCode, % dir
+			}
+			if(! newCode)
+			{	MsgBox, , JPGInc ERROR, Error file could not be read or was empty
+				return
+			}
+			recomp := new recompiler(controller)
+			MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
+			IfMsgBox Yes
+			{	recomp.addShortcut(newShortcut, newCode)
+			} else 
+			{	recomp.add(newShortcut, newCode)
+			}	
+			return
+		}
+	}
+}
+;JPGIncWinscriptFlag End add
+;JPGIncWinscriptFlag Start new
+class new
+{	
+	
+	__new(controller)
+	{	shortcutName := scriptName := controller.getInput("Enter the name of your new script. Ideally the name will be the same as the shortcut you intend to use")
+		if(scriptName == "cancelled" || trim(scriptName) == "")
+		{	return
+		}
+		StringReplace, shortcutName, shortcutName, %A_space%, _, All
+		IfNotInString, scriptName, .
+		{	scriptname .= ".ahk"
+		}
+		{	IfExist, addons\%scriptName%
+			{	MsgBox, 4, JPGInc Warning, Warning, the file %scriptName% already exists in the Addons folder. Would you like to open it for editing?
+				IfMsgBox, Yes
+				{	controller.edit("addons\" scriptName)
+				}
+				return
+			}
+		}
+		FileAppend,
+			(
+/* If you add this file to Winscript using the 'add' shortcut when the shortcut
+ * is selected the program will first try to instanciate a class with the same 
+ * name, then try and run a function with the same name and finally jump to 
+ * a label with the same name. 
+ *
+ */
+;uncomment this if you want to create a class
+/*
+class %shortcutName%
+{	__new(controller)
+	{	controller.showMessage("created the class")
+		return this
+	}
+}
+*/
+;uncomment this if you want to use a function
+/*
+%shortcutName%(controller)
+{	controller.showMessage("Called the function")
+	return
+}
+*/
+;uncomment this if you want to use a label
+/*
+%shortcutName%:
+{	globalController.showMessage("Called the label")
+	return
+}
+*/
+/* When the shortcut is launched the global controllers 'context' is set to the
+ * name of the shortcut. This allows you to activate hotkeys only when your script
+ * has been launched
+ */
+;place the hotkeys you wish to be active while running this script here
+#if GlobalController.getContext() == "%shortcutName%"
+;by default the escape key will cancel your shortcut
+esc::
+{	globalController.clearDisplay()
+	globalController.setContext("")
+	return
+}
+;place any hotkeys you want to be active all the time here
+#if
+			)
+			, addons\%scriptName%
+		controller.edit("addons\" scriptName)
+		controller.showMessage("The file " scriptName " has been created in the Addons folder. When you have finished creating the script use the 'Add' shortcut to include it into the main script")
+		return this
+	}
+}
+;JPGIncWinscriptFlag End new
 ;JPGIncWinscriptFlag Start display
 /* A class that is able to display text to and get input from the user
  * 
@@ -751,8 +748,9 @@ class recompiler
 class OnScreen
 {	;the number of gui elements before the first 'selection' gui elements
 	selectionOffput := 5
-	;the number of guil elements before the 'choice' gui elements
+	;the number of gui elements before the 'choice' gui elements
 	choiceOffput := 10
+	
 	;The color of the display text
 	fillColor := "Black"
 	;the default color of normal visibility display
@@ -762,6 +760,9 @@ class OnScreen
 	;the outline color for high visibility display
 	strokeColor := "Yellow"
 	fontSize := 25
+	;This value is changed whenever input is requested. Checking if this value has changed
+	;will indicate if input was interrupted
+	threadNumber := 1
 	
 	;whether to clear the display on a click
 	ignoreMouseClick := false
@@ -836,10 +837,12 @@ class OnScreen
 		Gui splash: add, text, x51 yp+1 BackgroundTrans h%height% w%width%, % selectionOutline
 		Gui splash: add, text, x50 yp+1 BackgroundTrans h%height% w%width%, % selectionOutline
 		Gui splash: add, text, % "x50 yp-1 BackgroundTrans c"  this.fillColor " h" height " w" width, % selection
+		
+		Gui, add, Edit, r2 h0 w0 WantTab WantReturn
 		if(doShow)
-		{	Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu +Owner
+		{	Gui splash: +lastfound -Caption +AlwaysOnTop -SysMenu +Owner
 			WinSet, TransColor, white
-			Gui splash: show, NoActivate y120, WinscriptSplash
+			Gui splash: show, y120, WinscriptSplash
 			this.guiVisible := true
 		} else
 		{	this.guiVisible := false
@@ -882,9 +885,9 @@ class OnScreen
 			GuiControl, splash:text, % "static" 6 - A_index + this.selectionOffput, % selection
 			GuiControl, splash:text, % "static" 6 - A_index + this.choiceOffput, % choices
 		}
-		Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu +Owner
+		Gui splash: +lastfound -Caption +AlwaysOnTop -SysMenu +Owner
 		WinSet, TransColor, white
-		Gui splash: show, NoActivate y120, WinscriptSplash
+		Gui splash: show, y120, WinscriptSplash
 		this.guiVisible := true
 		return
 	}
@@ -897,10 +900,12 @@ class OnScreen
 	 *	If neither is true then nothing happens
 	 */
 	hide()
-	{	if(this.waitingForInput)
-		{	Gui splash: +lastfound
-			WinActivate, A
-			send {esc}
+	{	if(this.waitingForInput == "oneChar")
+		{	;cause the other input to cancel
+			input, notNeeded, T0.1
+			return
+		} else if(this.waitingForInput == "alternate")
+		{	this.updateEdit("cancelled")
 			return
 		}
 		if(this.guiVisible)
@@ -959,33 +964,55 @@ class OnScreen
 	 */
 	getChoice(origionalChoices, message := "", cancelSettings := "")
 	{	this.setClearKeys(cancelSettings)
+		this.threadNumber++
 		selection := ""
 		oneChar := ""
 		filteredChoices := origionalChoices
+		this.updateEdit("")
 		;get the input
 		while true
-		{	this.display(message, this.arrayToString(filteredChoices), selection)
-			oneChar := this.getNextChar()
-			if(oneChar == "cancelled")
+		{	
+			;~ this.display(message, this.arrayToString(filteredChoices), selection)
+			;~ oneChar := this.getNextChar(this.threadNumber)
+			;~ if(oneChar == "cancelled")
+			;~ {	this.hide()
+				;~ return "cancelled"
+			;~ } else if(oneChar == "end")
+			;~ {	break
+			;~ } else if(oneChar == "backspace")
+			;~ {	StringTrimRight, selection, selection, 1
+				;~ filteredChoices := this.filterChoices(origionalChoices, selection)
+			;~ } else if(oneChar == "`t")
+			;~ {	;a tab rotates the list of choices
+				;~ this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
+			;~ } else
+			;~ {	selection .= oneChar
+				;~ ;order the list of choices depending on the input from the user
+				;~ filteredChoices := this.filterChoices(origionalChoices, selection)
+			;~ }
+			
+			this.display(message, this.arrayToString(filteredChoices), selection)
+			selection := this.alternateInput(this.threadNumber)
+			if(selection == "cancelled")
 			{	this.hide()
-				return "cancelled"
-			} else if(oneChar == "end")
+				return selection
+			} else if(instr(selection, "`n"))
 			{	break
-			} else if(oneChar == "backspace")
-			{	StringTrimRight, selection, selection, 1
-				filteredChoices := this.filterChoices(origionalChoices, selection)
-			} else if(oneChar == "`t")
-			{	;a tab rotates the list of choices
-				this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
-			} else
-			{	selection .= oneChar
-				;order the list of choices depending on the input from the user
-				filteredChoices := this.filterChoices(origionalChoices, selection)
+			} else if(instr(selection, "`t"))
+			{	this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
+				this.updateEdit(selection := RegExReplace(selection, "`t"))
+				continue
 			}
+			filteredChoices := this.filterChoices(origionalChoices, selection)
 		}
 		this.hide()
 		;return the top element that is being displayed to the user
 		return filteredChoices[filteredChoices.minIndex()]
+	}
+	
+	updateEdit(newValue)
+	{	GuiControl, splash:, Edit1, % newValue
+		return
 	}
 	/*
 	 * Gets input from the user.
@@ -1000,7 +1027,7 @@ class OnScreen
 	 */
 	getInput(message, cancelSettings := "")
 	{	this.setClearKeys(cancelSettings)
-		
+		this.threadNumber++
 		;required for the display method
 		choices := ""
 		;the input variable
@@ -1009,7 +1036,7 @@ class OnScreen
 		;get the input
 		while true
 		{	this.display(message, choices, input)
-			oneChar := this.getNextChar()
+			oneChar := this.getNextChar(this.threadNumber)
 			if(oneChar == "cancelled")
 			{	input := "cancelled"
 				break
@@ -1105,13 +1132,19 @@ class OnScreen
 	 *		or 'end' if enter was pressed
 	 *		or 'cancelled' if escape was pressed
 	 */
-	getNextChar()
-	{	this.waitingForInput := true
+	getNextChar(interrupted)
+	{	if(interrupted != this.threadNumber)
+		{	return "cancelled"
+		}
+		this.waitingForInput := "oneChar"
 		input, oneChar, L1,{Esc}{BackSpace}{enter}{Lalt}{RAlt}{Lctrl}{RCtrl}{LWin}{RWin}
+		if(interrupted != this.threadNumber)
+		{	return "cancelled"
+		}
 		this.waitingForInput := false
 		if(ErrorLevel == "EndKey:Backspace")
 		{ 	return "backspace"
-		} else if(ErrorLevel == "EndKey:Escape")
+		} else if(ErrorLevel == "EndKey:Escape" || ErrorLevel == "NewInput")
 		{	return "cancelled"
 		}else if(ErrorLevel == "EndKey:Enter")
 		{	return "end"
@@ -1119,9 +1152,45 @@ class OnScreen
 		{	StringReplace, keyName, ErrorLevel, EndKey:
 			send {%keyName% down}
 			KeyWait, % keyName
-			return this.getNextChar()
+			return this.getNextChar(interrupted)
 		}
 		return oneChar
+	} 
+	 
+	alternateInput(interrupted)
+	{	this.waitingForInput := "alternate"
+		GuiControlGet, currentInput, splash:, % "static" this.choiceOffput
+		guicontrol, focus, splash: Edit1
+		while(true)
+		{	if(interrupted != this.threadNumber)
+			{	currentInput := "cancelled"
+				break
+			}
+			GuiControlGet, newInput, splash:, Edit1
+			if(newInput != currentInput)
+			{	currentinput := newInput
+				break
+			}
+		
+			gui splash:+LastFound
+			IfWinNotActive
+			{	this.waitModifierKeys()
+				gui splash:+LastFound
+				WinActivate
+				guicontrol, focus, splash: Edit1
+			}
+			sleep, 50
+		}
+		this.waitingForInput := false
+		return currentInput
+	}
+	
+	waitModifierKeys()
+	{	KeyWait, Control
+		KeyWait, Alt
+		KeyWait, LWin
+		KeyWait, rWin
+		return
 	}
 	
 	/*	Takes an array and either makes the first element the last or the opposite
