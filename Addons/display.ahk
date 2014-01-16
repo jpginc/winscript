@@ -12,8 +12,9 @@
 class OnScreen
 {	;the number of gui elements before the first 'selection' gui elements
 	selectionOffput := 5
-	;the number of guil elements before the 'choice' gui elements
+	;the number of gui elements before the 'choice' gui elements
 	choiceOffput := 10
+	
 	;The color of the display text
 	fillColor := "Black"
 	;the default color of normal visibility display
@@ -100,10 +101,13 @@ class OnScreen
 		Gui splash: add, text, x51 yp+1 BackgroundTrans h%height% w%width%, % selectionOutline
 		Gui splash: add, text, x50 yp+1 BackgroundTrans h%height% w%width%, % selectionOutline
 		Gui splash: add, text, % "x50 yp-1 BackgroundTrans c"  this.fillColor " h" height " w" width, % selection
+		
+		Gui, add, Edit, r2 h0 w0 WantTab WantReturn
+
 		if(doShow)
-		{	Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu +Owner
+		{	Gui splash: +lastfound -Caption +AlwaysOnTop -SysMenu +Owner
 			WinSet, TransColor, white
-			Gui splash: show, NoActivate y120, WinscriptSplash
+			Gui splash: show, y120, WinscriptSplash
 			this.guiVisible := true
 		} else
 		{	this.guiVisible := false
@@ -146,9 +150,9 @@ class OnScreen
 			GuiControl, splash:text, % "static" 6 - A_index + this.selectionOffput, % selection
 			GuiControl, splash:text, % "static" 6 - A_index + this.choiceOffput, % choices
 		}
-		Gui splash: +lastfound +disabled -Caption +AlwaysOnTop -SysMenu +Owner
+		Gui splash: +lastfound -Caption +AlwaysOnTop -SysMenu +Owner
 		WinSet, TransColor, white
-		Gui splash: show, NoActivate y120, WinscriptSplash
+		Gui splash: show, y120, WinscriptSplash
 		this.guiVisible := true
 		return
 	}
@@ -161,9 +165,12 @@ class OnScreen
 	 *	If neither is true then nothing happens
 	 */
 	hide()
-	{	if(this.waitingForInput)
+	{	if(this.waitingForInput == "oneChar")
 		{	;cause the other input to cancel
 			input, notNeeded, T0.1
+			return
+		} else if(this.waitingForInput == "alternate")
+		{	this.updateEdit("cancelled")
 			return
 		}
 		if(this.guiVisible)
@@ -226,30 +233,51 @@ class OnScreen
 		selection := ""
 		oneChar := ""
 		filteredChoices := origionalChoices
+		this.updateEdit("")
 		;get the input
 		while true
-		{	this.display(message, this.arrayToString(filteredChoices), selection)
-			oneChar := this.getNextChar(this.threadNumber)
-			if(oneChar == "cancelled")
+		{	
+			;~ this.display(message, this.arrayToString(filteredChoices), selection)
+			;~ oneChar := this.getNextChar(this.threadNumber)
+			;~ if(oneChar == "cancelled")
+			;~ {	this.hide()
+				;~ return "cancelled"
+			;~ } else if(oneChar == "end")
+			;~ {	break
+			;~ } else if(oneChar == "backspace")
+			;~ {	StringTrimRight, selection, selection, 1
+				;~ filteredChoices := this.filterChoices(origionalChoices, selection)
+			;~ } else if(oneChar == "`t")
+			;~ {	;a tab rotates the list of choices
+				;~ this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
+			;~ } else
+			;~ {	selection .= oneChar
+				;~ ;order the list of choices depending on the input from the user
+				;~ filteredChoices := this.filterChoices(origionalChoices, selection)
+			;~ }
+			
+			this.display(message, this.arrayToString(filteredChoices), selection)
+			selection := this.alternateInput(this.threadNumber)
+			if(selection == "cancelled")
 			{	this.hide()
-				return "cancelled"
-			} else if(oneChar == "end")
+				return selection
+			} else if(instr(selection, "`n"))
 			{	break
-			} else if(oneChar == "backspace")
-			{	StringTrimRight, selection, selection, 1
-				filteredChoices := this.filterChoices(origionalChoices, selection)
-			} else if(oneChar == "`t")
-			{	;a tab rotates the list of choices
-				this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
-			} else
-			{	selection .= oneChar
-				;order the list of choices depending on the input from the user
-				filteredChoices := this.filterChoices(origionalChoices, selection)
+			} else if(instr(selection, "`t"))
+			{	this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
+				this.updateEdit(RegExReplace(selection, "`t"))
+				continue
 			}
+			filteredChoices := this.filterChoices(origionalChoices, selection)
 		}
 		this.hide()
 		;return the top element that is being displayed to the user
 		return filteredChoices[filteredChoices.minIndex()]
+	}
+	
+	updateEdit(newValue)
+	{	GuiControl, splash:, Edit1, % newValue
+		return
 	}
 	/*
 	 * Gets input from the user.
@@ -373,7 +401,7 @@ class OnScreen
 	{	if(interrupted != this.threadNumber)
 		{	return "cancelled"
 		}
-		this.waitingForInput := true
+		this.waitingForInput := "oneChar"
 		input, oneChar, L1,{Esc}{BackSpace}{enter}{Lalt}{RAlt}{Lctrl}{RCtrl}{LWin}{RWin}
 		if(interrupted != this.threadNumber)
 		{	return "cancelled"
@@ -392,6 +420,43 @@ class OnScreen
 			return this.getNextChar(interrupted)
 		}
 		return oneChar
+	} 
+	 
+	alternateInput(interrupted)
+	{	this.waitingForInput := "alternate"
+		GuiControlGet, currentInput, splash:, % "static" this.choiceOffput
+		guicontrol, focus, splash: Edit1
+
+		while(true)
+		{	if(interrupted != this.threadNumber)
+			{	currentInput := "cancelled"
+				break
+			}
+			GuiControlGet, newInput, splash:, Edit1
+			if(newInput != currentInput)
+			{	currentinput := newInput
+				break
+			}
+		
+			gui splash:+LastFound
+			IfWinNotActive
+			{	this.waitModifierKeys()
+				gui splash:+LastFound
+				WinActivate
+				guicontrol, focus, splash: Edit1
+			}
+			sleep, 50
+		}
+		this.waitingForInput := false
+		return currentInput
+	}
+	
+	waitModifierKeys()
+	{	KeyWait, Control
+		KeyWait, Alt
+		KeyWait, LWin
+		KeyWait, rWin
+		return
 	}
 	
 	/*	Takes an array and either makes the first element the last or the opposite
