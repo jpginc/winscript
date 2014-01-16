@@ -265,7 +265,7 @@ class OnScreen
 			{	break
 			} else if(instr(selection, "`t"))
 			{	this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
-				this.updateEdit(RegExReplace(selection, "`t"))
+				this.updateEdit(selection := RegExReplace(selection, "`t"))
 				continue
 			}
 			filteredChoices := this.filterChoices(origionalChoices, selection)
