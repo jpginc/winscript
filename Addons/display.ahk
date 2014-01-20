@@ -511,6 +511,10 @@ class OnScreen
 		return	
 	}
 }
+splashguiclose:
+{	globalController.clearDisplay()
+	return
+}
 removeTooltip:
 {	SetTimer, RemoveToolTip, Off
 	ToolTip
