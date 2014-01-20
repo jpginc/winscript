@@ -20,7 +20,7 @@ class OnScreen
 	;the default color of normal visibility display
 	regularFillColor := "Black"
 	;the fill color of the high visiblity display
-	highVisFillColor := "green"
+	highVisFillColor := "Black"
 	;the outline color for high visibility display
 	strokeColor := "Yellow"
 	fontSize := 25
@@ -42,7 +42,7 @@ class OnScreen
 	waitingForInput := false
 	
 	;the numer of gui elements to render. 1 for normal display 5 for high vis
-	visiblitySetting := 1
+	visiblitySetting := 5
 	
 	/* initialises the class
 	 * @param controller
