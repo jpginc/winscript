@@ -640,6 +640,102 @@ esc::
 	}
 }
 ;JPGIncWinscriptFlag End new
+;JPGIncWinscriptFlag Start unpack
+unpack()
+{	SetWorkingDir, % A_ScriptDir
+	IfNotExist, Addons
+	{	FileCreateDir, Addons
+	}
+	recompiler := new recompiler()
+	beforeFlag := recompiler.getBeforeFlag()
+	afterFlag := recompiler.getAfterFlag()
+	source := recompiler.getRunningCode()
+	fileName := ""
+	warnings := ""
+	
+	Loop, parse, source, `n, `r
+	{	if(RegExMatch(A_loopfield, "m)^" beforeFlag))
+		{	filename := RegExReplace(A_loopfield, "m)^" beforeFlag "(.*)", "$1")
+			IfNotInString, fileName, .
+			{	filename .= ".ahk"
+			}
+			IfExist, Addons\%fileName%
+			{	warnings .= fileName "`n"
+				filename := "" ;dont append to an already existing file
+			}
+			continue
+		}
+		if(RegExMatch(A_loopfield, "m)^" afterFlag))
+		{	filename := ""
+		}
+		if(filename != "")
+		{	FileAppend, % A_loopfield, Addons\%filename%
+		}
+	}
+	if(warnings)
+	{	MsgBox, , JPGInc Warning, Warning the following files already existed and were not unpacked`n%warnings%
+	} else
+	{	MsgBox, , JPGInc Success, Files unpacked successfully
+	}
+	return
+}
+;JPGIncWinscriptFlag End unpack
+;JPGIncWinscriptFlag Start add
+/* This function merges a new code segment into the running code.
+ * The user is prompted for a shortcut name which must not be
+ * the same as an already merged code segment. 
+ * 
+ * The code segment may be added as a new 'shortcut' in which case
+ * a shortcut is added to the default shortcut list. If a file exists
+ * in the Addons folder with the same name as the shortcut then it is
+ * used otherwise the user is prompted to select a file. 
+ * 
+ * After the code segment is added the script is reloaded
+ * @param controller
+ *		An instance of the Controller class
+ */
+add(controller)
+{	while(true)
+	{	;get the name of the new code segment
+		newShortcut := controller.getInput("Type a shortcut name.")
+		if(newShortcut == "cancelled")
+		{	return
+		}
+		;make sure the name is valid
+		if(! controller.isValidShortcut(newShortcut))
+		{	MsgBox, , JPGInc ERROR, Error that shortcut is invalid or already in use
+		} else
+		{	;load the code
+			IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
+			{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
+			} else
+			{	controller.showMessage("Select the file to load", ignoreMouseClicks := true)
+				FileSelectFile, dir, 3 ,% A_ScriptDir "\Addons"
+				if(errorlevel)
+				{	controller.clearDisplay()
+					return ;the user cancelled
+				}
+				dir := RegExReplace(dir, "\R")
+				controller.clearDisplay()
+				FileRead, newCode, % dir
+			}
+			if(! newCode)
+			{	MsgBox, , JPGInc ERROR, Error file could not be read or was empty
+				return
+			}
+			recomp := new recompiler(controller)
+			MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
+			IfMsgBox Yes
+			{	recomp.addShortcut(newShortcut, newCode)
+			} else 
+			{	recomp.add(newShortcut, newCode)
+			}	
+			return
+		}
+	}
+}
+;JPGIncWinscriptFlag End add
+
 ;JPGIncWinscriptFlag Start display
 /* A class that is able to display text to and get input from the user
  * 
@@ -663,7 +759,7 @@ class OnScreen
 	;the default color of normal visibility display
 	regularFillColor := "Black"
 	;the fill color of the high visiblity display
-	highVisFillColor := "green"
+	highVisFillColor := "Black"
 	;the outline color for high visibility display
 	strokeColor := "Yellow"
 	fontSize := 25
@@ -685,7 +781,7 @@ class OnScreen
 	waitingForInput := false
 	
 	;the numer of gui elements to render. 1 for normal display 5 for high vis
-	visiblitySetting := 1
+	visiblitySetting := 5
 	
 	/* initialises the class
 	 * @param controller
@@ -746,6 +842,7 @@ class OnScreen
 		Gui splash: add, text, % "x50 yp-1 BackgroundTrans c"  this.fillColor " h" height " w" width, % selection
 		
 		Gui, add, Edit, r2 h0 w0 WantTab WantReturn
+
 		if(doShow)
 		{	Gui splash: +lastfound -Caption +AlwaysOnTop -SysMenu +Owner
 			WinSet, TransColor, white
@@ -1068,6 +1165,7 @@ class OnScreen
 	{	this.waitingForInput := "alternate"
 		GuiControlGet, currentInput, splash:, % "static" this.choiceOffput
 		guicontrol, focus, splash: Edit1
+
 		while(true)
 		{	if(interrupted != this.threadNumber)
 			{	currentInput := "cancelled"
@@ -1161,100 +1259,5 @@ removeTooltip:
 	ToolTip
 	return
 }
-;JPGIncWinscriptFlag End display
-;JPGIncWinscriptFlag Start unpack
-unpack()
-{	SetWorkingDir, % A_ScriptDir
-	IfNotExist, Addons
-	{	FileCreateDir, Addons
-	}
-	recompiler := new recompiler()
-	beforeFlag := recompiler.getBeforeFlag()
-	afterFlag := recompiler.getAfterFlag()
-	source := recompiler.getRunningCode()
-	fileName := ""
-	warnings := ""
-	
-	Loop, parse, source, `n, `r
-	{	if(RegExMatch(A_loopfield, "m)^" beforeFlag))
-		{	filename := RegExReplace(A_loopfield, "m)^" beforeFlag "(.*)", "$1")
-			IfNotInString, fileName, .
-			{	filename .= ".ahk"
-			}
-			IfExist, Addons\%fileName%
-			{	warnings .= fileName "`n"
-				filename := "" ;dont append to an already existing file
-			}
-			continue
-		}
-		if(RegExMatch(A_loopfield, "m)^" afterFlag))
-		{	filename := ""
-		}
-		if(filename != "")
-		{	FileAppend, % A_loopfield, Addons\%filename%
-		}
-	}
-	if(warnings)
-	{	MsgBox, , JPGInc Warning, Warning the following files already existed and were not unpacked`n%warnings%
-	} else
-	{	MsgBox, , JPGInc Success, Files unpacked successfully
-	}
-	return
-}
-;JPGIncWinscriptFlag End unpack
 
-;JPGIncWinscriptFlag Start add
-/* This function merges a new code segment into the running code.
- * The user is prompted for a shortcut name which must not be
- * the same as an already merged code segment. 
- * 
- * The code segment may be added as a new 'shortcut' in which case
- * a shortcut is added to the default shortcut list. If a file exists
- * in the Addons folder with the same name as the shortcut then it is
- * used otherwise the user is prompted to select a file. 
- * 
- * After the code segment is added the script is reloaded
- * @param controller
- *		An instance of the Controller class
- */
-add(controller)
-{	while(true)
-	{	;get the name of the new code segment
-		newShortcut := controller.getInput("Type a shortcut name.")
-		if(newShortcut == "cancelled")
-		{	return
-		}
-		;make sure the name is valid
-		if(! controller.isValidShortcut(newShortcut))
-		{	MsgBox, , JPGInc ERROR, Error that shortcut is invalid or already in use
-		} else
-		{	;load the code
-			IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
-			{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
-			} else
-			{	controller.showMessage("Select the file to load", ignoreMouseClicks := true)
-				FileSelectFile, dir, 3 ,% A_ScriptDir "\Addons"
-				if(errorlevel)
-				{	controller.clearDisplay()
-					return ;the user cancelled
-				}
-				dir := RegExReplace(dir, "\R")
-				controller.clearDisplay()
-				FileRead, newCode, % dir
-			}
-			if(! newCode)
-			{	MsgBox, , JPGInc ERROR, Error file could not be read or was empty
-				return
-			}
-			recomp := new recompiler(controller)
-			MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
-			IfMsgBox Yes
-			{	recomp.addShortcut(newShortcut, newCode)
-			} else 
-			{	recomp.add(newShortcut, newCode)
-			}	
-			return
-		}
-	}
-}
-;JPGIncWinscriptFlag End add
+;JPGIncWinscriptFlag End display
