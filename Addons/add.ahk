@@ -27,11 +27,12 @@ add(controller)
 			{	FileRead, newCode, % A_ScriptDir "\Addons\" newShortcut ".ahk"
 			} else
 			{	controller.showMessage("Select the file to load", ignoreMouseClicks := true)
-				FileSelectFile, dir, 12 ,% A_ScriptDir "\Addons"
+				FileSelectFile, dir, 3 ,% A_ScriptDir "\Addons"
 				if(errorlevel)
 				{	controller.clearDisplay()
 					return ;the user cancelled
 				}
+				dir := RegExReplace(dir, "\R")
 				controller.clearDisplay()
 				FileRead, newCode, % dir
 			}
