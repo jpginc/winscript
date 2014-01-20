@@ -1,5 +1,6 @@
 unpack()
-{	IfNotExist, Addons
+{	SetWorkingDir, % A_ScriptDir
+	IfNotExist, Addons
 	{	FileCreateDir, Addons
 	}
 	recompiler := new recompiler()
@@ -9,9 +10,9 @@ unpack()
 	fileName := ""
 	warnings := ""
 	
-	Loop, parse, source, `n
+	Loop, parse, source, `n, `r
 	{	if(RegExMatch(A_loopfield, "m)^" beforeFlag))
-		{	filename := RegExReplace(A_loopfield, "m)^" beforeFlag "(.*)\R", "$1")
+		{	filename := RegExReplace(A_loopfield, "m)^" beforeFlag "(.*)", "$1")
 			IfNotInString, fileName, .
 			{	filename .= ".ahk"
 			}
