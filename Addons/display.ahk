@@ -297,24 +297,33 @@ class OnScreen
 		choices := ""
 		;the input variable
 		input := ""
-		
+		this.updateEdit("")
 		;get the input
 		while true
-		{	this.display(message, choices, input)
-			oneChar := this.getNextChar(this.threadNumber)
-			if(oneChar == "cancelled")
-			{	input := "cancelled"
-				break
-			} else if(oneChar == "end")
+		{	
+			;~ this.display(message, choices, input)
+			;~ oneChar := this.getNextChar(this.threadNumber)
+			;~ if(oneChar == "cancelled")
+			;~ {	input := "cancelled"
+				;~ break
+			;~ } else if(oneChar == "end")
+			;~ {	break
+			;~ } else if(oneChar == "backspace")
+			;~ {	StringTrimRight, input, input, 1
+			;~ } else
+			;~ {	input .= oneChar
+			;~ }
+			
+			this.display(message, choices, input)
+			input := this.alternateInput(this.threadNumber)
+			if(input == "cancelled")
 			{	break
-			} else if(oneChar == "backspace")
-			{	StringTrimRight, input, input, 1
-			} else
-			{	input .= oneChar
+			} else if(instr(input, "`n"))
+			{	break
 			}
 		}
 		this.hide()
-		return input
+		return RegExReplace(input, "`n")
 	}
 	
 	/*	Sorts an array of strings based on their similarity to a given string. 
