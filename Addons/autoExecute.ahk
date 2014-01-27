@@ -58,3 +58,12 @@ removeFromArray(theArray, item)
     }
     return
 }
+URLDownloadToVar(url)
+{   previousValue := ComObjError(false)
+    WebRequest := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+    WebRequest.Open("GET", url)
+    WebRequest.Send()
+    response := WebRequest.ResponseText
+    ComObjError(previousValue)
+    Return response    
+}
