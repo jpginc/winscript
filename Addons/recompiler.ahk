@@ -50,10 +50,9 @@ class recompiler
      * returns true existing code was updated
      */
     joinCode(name, newCode, ByRef existingCode, addShortcut, isUpdate := false) 
-    {	if(theStart := RegExMatch(existingCode, "`am)^" this.escapeRegex(this.beforeFlag name) "$")) 
+    {	if(theStart := RegExMatch(existingCode, "`am)^" escapeRegex(this.beforeFlag name) "$")) 
         {   ;we need to replace the existing code
-            MsgBox % "here " theStart
-            theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag name) "$", length)
+            theEnd := RegExMatch(existingCode, "P`am)^" escapeRegex(this.afterFlag name) "$", length)
             existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
         }
         if(! isUpdate)
@@ -65,7 +64,7 @@ class recompiler
             }
         }
         if(name == "autoExecute")
-        {   theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag "shortcutNames") "$", length)
+        {   theEnd := RegExMatch(existingCode, "P`am)^" escapeRegex(this.afterFlag "shortcutNames") "$", length)
             shortcutNames := SubStr(existingCode, 1, theEnd + length)
             otherCode := SubStr(existingCode, theEnd + length)
             ;special case where the code has to be added to the start of the script but after the shortcutNames section
@@ -83,12 +82,12 @@ class recompiler
      * returns 1 if unsuccessful
      */
     splitCode(name, ByRef existingCode, deleteShortcut := false)
-    {   if(theStart := RegExMatch(existingCode, "`am)^" this.escapeRegex(this.beforeFlag name) "$")) 
-        {	theEnd := RegExMatch(existingCode, "P`am)^" this.escapeRegex(this.afterFlag name) "$", length)
+    {   if(theStart := RegExMatch(existingCode, "`am)^" escapeRegex(this.beforeFlag name) "$")) 
+        {	theEnd := RegExMatch(existingCode, "P`am)^" escapeRegex(this.afterFlag name) "$", length)
             existingCode := SubStr(existingCode, 1, theStart - 1) SubStr(existingCode, theEnd + length)
             existingCode := RegExReplace(existingCode, "\R\R", "`r`n")
             if(deleteShortcut)
-            {   existingCode := RegExReplace(existingCode, "m)""(.*)" this.escapeRegex(name) ",", """$1", notNeeded, 1)
+            {   existingCode := RegExReplace(existingCode, "m)""(.*)" escapeRegex(name) ",", """$1", notNeeded, 1)
             }
             return 0
         }
@@ -197,12 +196,10 @@ class recompiler
 	{	return RegExMatch(haystack, "`am)^" needle "$")
 	}
 	
-	escapeRegex(theString) 
-	{	return "\Q" RegExReplace(theString, "(\Q|\E)", "\$1") "\E"
-	}
-	
 	escapeDollars(theString)
 	{	StringReplace, theString, theString, $, $$, all
 		return theString
 	}
+    
+    
 }
