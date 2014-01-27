@@ -465,6 +465,9 @@ class OnScreen
 		KeyWait, Alt
 		KeyWait, LWin
 		KeyWait, rWin
+		KeyWait, LButton
+		KeyWait, RButton
+		KeyWait, MButton
 		return
 	}
 	
