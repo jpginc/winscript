@@ -26,7 +26,7 @@ unpack()
 		{	filename := ""
 		}
 		if(filename != "")
-		{	FileAppend, % A_loopfield, Addons\%filename%
+		{	FileAppend, % A_loopfield "`r`n", Addons\%filename%
 		}
 	}
 	if(warnings)
