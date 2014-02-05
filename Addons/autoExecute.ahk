@@ -58,23 +58,26 @@ removeFromArray(theArray, item)
     }
     return
 }
-URLDownloadToVar(url, sizeWarn := 999999)
+URLDownloadToVar(url, sizeWarn := false)
 {   previousValue := ComObjError(false)
     WebRequest := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-    WebRequest.Open("GET", url)
+    WebRequest.Open("HEAD", url)
     WebRequest.Send()
     requestStatus := WebRequest.status
-    if(requestStatus < 200 || requestStatus > 299)
-    {   webrequest.Abort()
-    } else
-    {   size := WebRequest.GetResponseHeader("Content-Length")
-        if(size > sizeWarn)
-        {   MsgBox, 4, JPGInc Warning, Warning the download you have requested is %size% bytes (ie large)`nDo you really want to download?
-            IfMsgBox no
-            {   webrequest.Abort()
-            }
+    if(requestStatus < 200 || requestStatus > 299) ;2XX is success
+    {   ComObjError(previousValue)
+        return false
+    } 
+    size := WebRequest.GetResponseHeader("Content-Length") ;not all headers have a content length attribute!
+    if(sizeWarn && size > sizeWarn)
+    {   MsgBox, 4, JPGInc Warning, Warning the download you have requested is %size% bytes (ie large)`nDo you really want to download?
+        IfMsgBox no
+        {   ComObjError(previousValue)
+            return false
         }
     }
+    WebRequest.Open("GET", url)
+    WebRequest.Send()
     response := WebRequest.ResponseText
     ComObjError(previousValue)
     Return response    
