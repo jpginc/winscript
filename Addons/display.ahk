@@ -347,41 +347,46 @@ class OnScreen
 		for key, choice in choices
 		{	;how similar the string is to filter
 			score := 0
-			compareString := filter
 			
-			;the filter is trimmed from the left a character at a time. If the remaining 
-			;filter matches some part of the choice string then the choices score is increased
-			while(compareString)
-			{	;Bigger string matches are worth more
-				bonus := StrLen(compareString) * 2
-				
-				;Does the remaining filter exist within the choice string (case sensitive)
-				if(pos := RegExMatch(choice, escapeRegex(compareString)))
-				{	score += bonus
-					;if it is at the start then double the score
-					if(pos == 1)
+			compareStrings := StrSplit(filter, " ")
+
+			loop % compareStrings.maxIndex()
+			{	compareString := compareStrings[A_index]
+			
+				;the filter is trimmed from the left a character at a time. If the remaining 
+				;filter matches some part of the choice string then the choices score is increased
+				while(compareString)
+				{	;Bigger string matches are worth more
+					bonus := StrLen(compareString) * 2
+					
+					;Does the remaining filter exist within the choice string (case sensitive)
+					if(pos := RegExMatch(choice, escapeRegex(compareString)))
+					{	score += bonus
+						;if it is at the start then double the score
+						if(pos == 1)
+						{	score += bonus
+						}
+					}
+					
+					;if it is not the same case?
+					if(pos := RegExMatch(choice, "i)" escapeRegex(compareString)))
+					{	score += bonus
+						if(pos == 1)
+						{	score += bonus
+						}
+					}
+					
+					;does it exist not at the start but as word within the choice?
+					if(RegExMatch(choice, "\W" escapeRegex(compareString)))
 					{	score += bonus
 					}
-				}
-				
-				;if it is not the same case?
-				if(pos := RegExMatch(choice, "i)" escapeRegex(compareString)))
-				{	score += bonus
-					if(pos == 1)
-					{	score += bonus
+					
+					;if the string matches exactly then its score is bumped up 
+					if(RegExMatch(choice, "i)^" escapeRegex(compareString) "$"))
+					{	score *= 100
 					}
+					StringTrimLeft, compareString, compareString, 1
 				}
-				
-				;does it exist not at the start but as word within the choice?
-				if(RegExMatch(choices, "\W" escapeRegex(compareString)))
-				{	score += bonus
-				}
-				
-				;if the string matches exactly then its score is bumped up 
-				if(RegExMatch(choice, "i)^" escapeRegex(compareString) "$"))
-				{	score *= 100
-				}
-				StringTrimLeft, compareString, compareString, 1
 			}
 			
 			;items with the same score are moved the the next lowest free index.
