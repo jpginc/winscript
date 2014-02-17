@@ -69,23 +69,26 @@ removeFromArray(theArray, item)
     }
     return
 }
-URLDownloadToVar(url, sizeWarn := 999999)
+URLDownloadToVar(url, sizeWarn := false)
 {   previousValue := ComObjError(false)
     WebRequest := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-    WebRequest.Open("GET", url)
+    WebRequest.Open("HEAD", url)
     WebRequest.Send()
     requestStatus := WebRequest.status
-    if(requestStatus < 200 || requestStatus > 299)
-    {   webrequest.Abort()
-    } else
-    {   size := WebRequest.GetResponseHeader("Content-Length")
-        if(size > sizeWarn)
-        {   MsgBox, 4, JPGInc Warning, Warning the download you have requested is %size% bytes (ie large)`nDo you really want to download?
-            IfMsgBox no
-            {   webrequest.Abort()
-            }
+    if(requestStatus < 200 || requestStatus > 299) ;2XX is success
+    {   ComObjError(previousValue)
+        return false
+    } 
+    size := WebRequest.GetResponseHeader("Content-Length") ;not all headers have a content length attribute!
+    if(sizeWarn && size > sizeWarn)
+    {   MsgBox, 4, JPGInc Warning, Warning the download you have requested is %size% bytes (ie large)`nDo you really want to download?
+        IfMsgBox no
+        {   ComObjError(previousValue)
+            return false
         }
     }
+    WebRequest.Open("GET", url)
+    WebRequest.Send()
     response := WebRequest.ResponseText
     ComObjError(previousValue)
     Return response    
@@ -714,6 +717,47 @@ class recompiler
     
 }
 ;JPGIncWinscriptFlag End recompiler
+;JPGIncWinscriptFlag Start unpack
+unpack()
+{	SetWorkingDir, % A_ScriptDir
+	IfNotExist, Addons
+	{	FileCreateDir, Addons
+	}
+	recompiler := new recompiler()
+	beforeFlag := recompiler.getBeforeFlag()
+	afterFlag := recompiler.getAfterFlag()
+	source := recompiler.getRunningCode()
+	fileName := ""
+	warnings := ""
+	
+	Loop, parse, source, `n, `r
+	{	if(RegExMatch(A_loopfield, "m)^" beforeFlag))
+		{	filename := RegExReplace(A_loopfield, "m)^" beforeFlag "(.*)", "$1")
+			IfNotInString, fileName, .
+			{	filename .= ".ahk"
+			}
+			IfExist, Addons\%fileName%
+			{	warnings .= fileName "`n"
+				filename := "" ;dont append to an already existing file
+			}
+			continue
+		}
+		if(RegExMatch(A_loopfield, "m)^" afterFlag))
+		{	filename := ""
+		}
+		if(filename != "")
+		{	FileAppend, % A_loopfield "`r`n", Addons\%filename%
+		}
+	}
+	if(warnings)
+	{	MsgBox, , JPGInc Warning, Warning the following files already existed and were not unpacked`n%warnings%
+	} else
+	{	MsgBox, , JPGInc Success, Files unpacked successfully
+	}
+	return
+}
+;JPGIncWinscriptFlag End unpack
+
 ;JPGIncWinscriptFlag Start display
 /* A class that is able to display text to and get input from the user
  * 
@@ -820,6 +864,7 @@ class OnScreen
 		Gui splash: add, text, % "x50 yp-1 BackgroundTrans c"  this.fillColor " h" height " w" width, % selection
 		
 		Gui, add, Edit, r2 h0 w0 WantTab WantReturn
+
 		if(doShow)
 		{	Gui splash: +lastfound -Caption +AlwaysOnTop -SysMenu +Owner
 			WinSet, TransColor, white
@@ -1063,41 +1108,46 @@ class OnScreen
 		for key, choice in choices
 		{	;how similar the string is to filter
 			score := 0
-			compareString := filter
 			
-			;the filter is trimmed from the left a character at a time. If the remaining 
-			;filter matches some part of the choice string then the choices score is increased
-			while(compareString)
-			{	;Bigger string matches are worth more
-				bonus := StrLen(compareString) * 2
-				
-				;Does the remaining filter exist within the choice string (case sensitive)
-				if(pos := RegExMatch(choice, escapeRegex(compareString)))
-				{	score += bonus
-					;if it is at the start then double the score
-					if(pos == 1)
+			compareStrings := StrSplit(filter, " ")
+
+			loop % compareStrings.maxIndex()
+			{	compareString := compareStrings[A_index]
+			
+				;the filter is trimmed from the left a character at a time. If the remaining 
+				;filter matches some part of the choice string then the choices score is increased
+				while(compareString)
+				{	;Bigger string matches are worth more
+					bonus := StrLen(compareString) * 2
+					
+					;Does the remaining filter exist within the choice string (case sensitive)
+					if(pos := RegExMatch(choice, escapeRegex(compareString)))
+					{	score += bonus
+						;if it is at the start then double the score
+						if(pos == 1)
+						{	score += bonus
+						}
+					}
+					
+					;if it is not the same case?
+					if(pos := RegExMatch(choice, "i)" escapeRegex(compareString)))
+					{	score += bonus
+						if(pos == 1)
+						{	score += bonus
+						}
+					}
+					
+					;does it exist not at the start but as word within the choice?
+					if(RegExMatch(choice, "\W" escapeRegex(compareString)))
 					{	score += bonus
 					}
-				}
-				
-				;if it is not the same case?
-				if(pos := RegExMatch(choice, "i)" escapeRegex(compareString)))
-				{	score += bonus
-					if(pos == 1)
-					{	score += bonus
+					
+					;if the string matches exactly then its score is bumped up 
+					if(RegExMatch(choice, "i)^" escapeRegex(compareString) "$"))
+					{	score *= 100
 					}
+					StringTrimLeft, compareString, compareString, 1
 				}
-				
-				;does it exist not at the start but as word within the choice?
-				if(RegExMatch(choices, "\W" escapeRegex(compareString)))
-				{	score += bonus
-				}
-				
-				;if the string matches exactly then its score is bumped up 
-				if(RegExMatch(choice, "i)^" escapeRegex(compareString) "$"))
-				{	score *= 100
-				}
-				StringTrimLeft, compareString, compareString, 1
 			}
 			
 			;items with the same score are moved the the next lowest free index.
@@ -1151,6 +1201,7 @@ class OnScreen
 	{	this.waitingForInput := "alternate"
 		GuiControlGet, currentInput, splash:, % "static" this.choiceOffput
 		guicontrol, focus, splash: Edit1
+
 		while(true)
 		{	if(interrupted != this.threadNumber)
 			{	currentInput := "cancelled"
@@ -1247,45 +1298,5 @@ removeTooltip:
 	ToolTip
 	return
 }
-;JPGIncWinscriptFlag End display
 
-;JPGIncWinscriptFlag Start unpack
-unpack()
-{	SetWorkingDir, % A_ScriptDir
-	IfNotExist, Addons
-	{	FileCreateDir, Addons
-	}
-	recompiler := new recompiler()
-	beforeFlag := recompiler.getBeforeFlag()
-	afterFlag := recompiler.getAfterFlag()
-	source := recompiler.getRunningCode()
-	fileName := ""
-	warnings := ""
-	
-	Loop, parse, source, `n, `r
-	{	if(RegExMatch(A_loopfield, "m)^" beforeFlag))
-		{	filename := RegExReplace(A_loopfield, "m)^" beforeFlag "(.*)", "$1")
-			IfNotInString, fileName, .
-			{	filename .= ".ahk"
-			}
-			IfExist, Addons\%fileName%
-			{	warnings .= fileName "`n"
-				filename := "" ;dont append to an already existing file
-			}
-			continue
-		}
-		if(RegExMatch(A_loopfield, "m)^" afterFlag))
-		{	filename := ""
-		}
-		if(filename != "")
-		{	FileAppend, % A_loopfield "`r`n", Addons\%filename%
-		}
-	}
-	if(warnings)
-	{	MsgBox, , JPGInc Warning, Warning the following files already existed and were not unpacked`n%warnings%
-	} else
-	{	MsgBox, , JPGInc Success, Files unpacked successfully
-	}
-	return
-}
-;JPGIncWinscriptFlag End unpack
+;JPGIncWinscriptFlag End display
