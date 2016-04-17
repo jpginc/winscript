@@ -20,7 +20,6 @@ Loop, %0%  ; For each parameter:
 }
 
 
-;~ if(! A_IsAdmin)
 {	if(commandLineArgs["adminFlag"])
     {   MsgBox, 4, JPGInc Warning, Warning`, unable to get admin privelages. Would you like to continue (Admin acess may be required for some aspects of the program to work correctly)?
         IfMsgBox No
