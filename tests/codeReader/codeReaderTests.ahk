@@ -1,5 +1,4 @@
-﻿
-filePath := A_WorkingDir "\includerScript.ahk"
+﻿filePath := A_WorkingDir "\includerScript.ahk"
 FileRead, expected, expected.txt
 expected := RegExReplace(expected, "\R", "`n")
 reader := new JPGIncCodeReader(filePath)
@@ -7,10 +6,13 @@ code := RegExReplace(reader.readCode(), "\R", "`n")
 
 if(code != expected)
 {
+	Clipboard := "actual:`n" code "`nexpected:`n" expected
 	msgbox % "failed readCode `ncodeLength: " strlen(code) "`nexpected lenght: " strlen(expected)
-	Clipboard := code "`n;`n" expected
 }
-
+if(reader.removeIncludes("#include test`n;#include asdf") != "`n;#include asdf")
+{
+	MsgBox % "failed remove includes`n" reader.removeIncludes("#include test`n;#include asdf")
+}
 if(reader.getDir(filePath) != A_WorkingDir "\")
 {
 	MsgBox, % "failed getDir`n" reader.getDir(filePath)

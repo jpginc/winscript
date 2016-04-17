@@ -6,6 +6,7 @@
 class JPGIncCodeReader
 {
 	pathToRootFile := ""
+	loadedFiles := []
 	
 	__new(pathToRootFile)
 	{
@@ -25,45 +26,58 @@ class JPGIncCodeReader
 	
 	readCode() 
 	{
-		filesToLoad := [this.getAbsolutePath(this.pathToRootFile)]
-		code := ""
-		while true 
+		this.loadedFiles := []
+		return this._readCode(this.getAbsolutePath(this.pathToRootFile))
+	}
+	
+	_readCode(path, existing := "")
+	{
+		if(this._fileIsAlreadyIncluded(path))
 		{
-			if(! filesToLoad[A_Index])
-			{
-				break
-			}
-			
-			file := this.readFile(filesToLoad[A_Index])
-			code .= file "`n"
-			this.getIncludes(file, filesToLoad)
+			return ""
+		}
+		fileContents := this.loadFile(path)
+		
+
+		includes := this._getIncludes(fileContents)
+		existing .= this.removeIncludes(fileContents) "`n"
+		
+		loop, % includes.maxIndex()
+		{
+			existing .= this._readCode(includes[A_Index])
 		}
 		
-		return code
+		return existing
 	}
 	
-	readFile(file) 
+	loadFile(path)
 	{
-		FileRead, contents, % file
-		return contents
+		path := this.getAbsolutePath(path)
+		this.loadedFiles.insert(path)
+		FileRead, fileContents, % path
+		return fileContents
+	}
+
+	removeIncludes(fileContents)
+	{
+		return RegExReplace(fileContents, "`aOim)^#include .+$")
 	}
 	
-	getIncludes(code, toLoadArray)
+	_getIncludes(fileContents)
 	{
 		pos := 1
+		includes := []
 		
 		while true 
 		{
-			foundAt := RegExMatch(code, "`aOim)^#include (.*)$", include, pos)
+			foundAt := RegExMatch(fileContents, "`aOim)^#include (.+)$", include, pos)
 			if(! include.Count()) 
 			{
-				return
+				return includes
 			}
-			path := this.getAbsolutePath(this.removeComment(include.value(1)))
-			if(! this.arrayContains(toLoadArray, path))
-			{
-				toLoadArray.Insert(path)
-			}
+			
+			includes.insert(this.getAbsolutePath(this.removeComment(include.value(1))))
+			
 			pos := foundAt + include.len(1)
 		}
 	}
@@ -78,11 +92,12 @@ class JPGIncCodeReader
 		return str
 	}
 	
-	arrayContains(array, value) 
+	_fileIsAlreadyIncluded(path) 
 	{
-		Loop, % array.maxIndex()
+		path := this.getAbsolutePath(path)
+		Loop, % this.loadedFiles.maxIndex()
 		{
-			if(array[A_Index] == value)
+			if(this.loadedFiles[A_Index] == path)
 			{
 				return true
 			}
