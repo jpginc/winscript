@@ -11,7 +11,7 @@
  * @param controller
  *		An instance of the Controller class
  */
-JPGIncAdd(controller)
+Add_Script(controller)
 {	
 	includer := new JPGIncScriptIncluder(controller)
 	includer.add()

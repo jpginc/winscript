@@ -1,11 +1,11 @@
-JPGIncUnpack()
+Unpack_Script()
 {	
 	SetWorkingDir, % A_ScriptDir
 	IfNotExist, Addons
 	{	
 		FileCreateDir, Addons
 	}
-	recompiler := new recompiler()
+	recompiler := new JPGIncRecompiler()
 	beforeFlag := recompiler.getBeforeFlag()
 	afterFlag := recompiler.getAfterFlag()
 	source := recompiler.getRunningCode()

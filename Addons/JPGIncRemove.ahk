@@ -4,7 +4,7 @@
  * @param controller
  *		An instance of the Controller class
  */
-JPGIncRemove(controller)
+Remove_Script(controller)
 {	
 	while(true)
 	{	
@@ -25,7 +25,7 @@ JPGIncRemove(controller)
 			{	
 				continue
 			}
-			r := new recompiler()
+			r := new JPGIncRecompiler()
 			r.remove(toRemove)
 		} else
 		{	

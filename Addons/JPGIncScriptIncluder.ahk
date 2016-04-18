@@ -25,7 +25,7 @@ class JPGIncScriptIncluder
 					return
 				}
 				
-				recomp := new recompiler(controller)
+				recomp := new JPGIncRecompiler(controller)
 				MsgBox, 4, JPGInc, Would you like to add this shortcut to the default shortcut list?
 				IfMsgBox Yes
 				{	recomp.addShortcut(newShortcut, newCode)
@@ -103,7 +103,7 @@ class JPGIncScriptIncluder
 					{	
 						return
 					}
-					r := new recompiler()
+					r := new JPGIncRecompiler()
 					r.update(toUpdate, newCode)
 				}
 			} else

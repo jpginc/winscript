@@ -1,6 +1,5 @@
-class JPGIncNew
+class New_Script
 {	
-	
 	__new(controller)
 	{	
 		shortcutName := scriptName := controller.getInput("Enter the name of your new script. Ideally the name will be the same as the shortcut you intend to use")

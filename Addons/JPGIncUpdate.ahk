@@ -11,7 +11,7 @@
  * @param controller
  * 		An instance of the Controller class
  */
-update(controller)
+Update_SCript(controller)
 {	
 	includer := new JPGIncScriptIncluder(controller)
 	includer.update()

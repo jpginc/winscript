@@ -1,5 +1,5 @@
 ﻿class JPGIncController
-{	display := new OnScreen(this)
+{	display := new JPGIncOnScreen(this)
 	context := ""
 	shortcuts := ""
 	codeSegments := ""

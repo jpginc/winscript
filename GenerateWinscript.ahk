@@ -1,17 +1,17 @@
 ﻿filesToShortcutName := ["JPGIncAutoExecute", ""
-, "JPGIncAdd", "Add"
+, "JPGIncAdd", "Add Script"
 , "JPGIncCodeReader", ""
 , "JPGIncController", ""
 , "JPGIncDefaultHotkeys", ""
-, "JPGIncEdit", "Edit"
-, "JPGIncNew", "New"
+, "JPGIncEdit", "Edit Script"
+, "JPGIncNew", "New Script"
 , "JPGIncOnScreen", ""
 , "JPGIncRecompiler", ""
-, "JPGIncRemove", "Remove"
+, "JPGIncRemove", "Remove Script"
 , "JPGIncScriptIncluder", ""
 , "JPGIncShortcutLauncher", ""
-, "JPGIncUnpack", "Unpack"
-, "JPGIncUpdate", "Update" ]
+, "JPGIncUnpack", "Unpack Scripts"
+, "JPGIncUpdate", "Update Script" ]
 
 code =
 (

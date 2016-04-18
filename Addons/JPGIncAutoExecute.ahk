@@ -13,29 +13,36 @@ key := ""
 Loop, %0%  ; For each parameter:
 {   
     if(Mod(A_index, 2) == 0)
-    {   commandLineArgs[key] :=  %A_Index% 
+    {   
+        commandLineArgs[key] :=  %A_Index% 
     } else
-    {   key :=  %A_Index%
+    {   
+        key :=  %A_Index%
     }
 }
 
 
 {	if(commandLineArgs["adminFlag"])
-    {   MsgBox, 4, JPGInc Warning, Warning`, unable to get admin privelages. Would you like to continue (Admin acess may be required for some aspects of the program to work correctly)?
+    {   
+        MsgBox, 4, JPGInc Warning, Warning`, unable to get admin privelages. Would you like to continue (Admin acess may be required for some aspects of the program to work correctly)?
         IfMsgBox No
-        {   ExitApp
+        {   
+            ExitApp
         }
     } else
-    {   Run *RunAs "%A_ScriptFullPath%" "adminFlag" 1
+    {   
+        Run *RunAs "%A_ScriptFullPath%" "adminFlag" 1
         ExitApp
     }
 }
 IfNotExist, Addons
-{   MsgBox, 4, JPGInc ERROR, ERROR the Addons folder does not exist. Would you like to create and populate the folder now?
+{   
+    MsgBox, 4, JPGInc ERROR, ERROR the Addons folder does not exist. Would you like to create and populate the folder now?
     IfMsgBox, Yes
-    {   unpack()
+    {   
+        unpack()
     }
 }
-GlobalController := new Controller(JPGIncShortcuts, JPGIncCodeSegments)
+GlobalController := new JPGIncController(JPGIncShortcuts, JPGIncCodeSegments)
 
 return

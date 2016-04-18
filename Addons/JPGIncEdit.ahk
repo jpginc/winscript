@@ -3,7 +3,7 @@
  * @param controller
  *		An instance of the Controller class
  */
-JPGIncEdit(controller)
+Edit_Script(controller)
 {	
 	toEdit := controller.getChoice(controller.getAllShortcuts(), "Select a code segment/shortcut to edit")
 	includer := new JPGIncScriptIncluder(controller)
