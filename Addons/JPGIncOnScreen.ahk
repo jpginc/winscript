@@ -9,7 +9,7 @@
  * The alternate display modes were introduced because the display flickers when 
  * rendering all 5 text elements in high visibility mode.
  */
-class OnScreen
+class JPGIncOnScreen
 {	;the number of gui elements before the first 'selection' gui elements
 	selectionOffput := 5
 	;the number of gui elements before the 'choice' gui elements

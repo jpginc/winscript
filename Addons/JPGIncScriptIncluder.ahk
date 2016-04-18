@@ -1,4 +1,6 @@
-﻿
+﻿/*
+ * This class handles loading, adding and updating the script
+ */
 class JPGIncScriptIncluder
 {
 	controller := ""
@@ -13,7 +15,7 @@ class JPGIncScriptIncluder
 	{
 		if(newShortcut := this.getShortcutName("Type a shortcut name."))
 		{	
-			if(fileLocation := this.getFileLocation())
+			if(fileLocation := this.getFileLocation(newShortcut))
 			{
 				codeReader := new JPGIncCodeReader(fileLocation)
 				newCode := this.codeReader.readCode()
@@ -55,7 +57,7 @@ class JPGIncScriptIncluder
 		}
 	}
 	
-	getFileLocation() 
+	getFileLocation(newShortcut) 
 	{
 		IfExist, % A_scriptdir "\Addons\" newShortcut ".ahk"
 		{	
@@ -87,7 +89,7 @@ class JPGIncScriptIncluder
 		{	
 			if(this.controller.codeOrShortcutExists(toUpdate))
 			{	
-				if(fileLocation := this.getFileLocation())
+				if(fileLocation := this.getFileLocation(toUpdate))
 				{
 					codeReader := new JPGIncCodeReader(fileLocation)
 					newCode := this.codeReader.readCode()

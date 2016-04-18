@@ -1,4 +1,4 @@
-class recompiler
+class JPGIncRecompiler
 {
 
     beforeFlag := ";JPGIncWinscriptFlag Start "
