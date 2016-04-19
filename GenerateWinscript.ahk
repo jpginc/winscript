@@ -5,13 +5,15 @@
 , "JPGIncDefaultHotkeys", ""
 , "JPGIncEdit", "Edit Script"
 , "JPGIncNew", "New Script"
-, "JPGIncOnScreen", ""
+, "JPGIncDisplay", ""
 , "JPGIncRecompiler", ""
 , "JPGIncRemove", "Remove Script"
 , "JPGIncScriptIncluder", ""
 , "JPGIncShortcutLauncher", ""
 , "JPGIncUnpack", "Unpack Scripts"
-, "JPGIncUpdate", "Update Script" ]
+, "JPGIncUpdate", "Update Script"
+, "JPGIncInput", ""
+, "JPGIncHelperFunctions", ""]
 
 code =
 (

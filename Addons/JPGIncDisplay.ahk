@@ -9,7 +9,7 @@
  * The alternate display modes were introduced because the display flickers when 
  * rendering all 5 text elements in high visibility mode.
  */
-class JPGIncOnScreen
+class JPGIncDisplay
 {	;the number of gui elements before the first 'selection' gui elements
 	selectionOffput := 5
 	;the number of gui elements before the 'choice' gui elements
@@ -43,6 +43,11 @@ class JPGIncOnScreen
 	
 	;the numer of gui elements to render. 1 for normal display 5 for high vis
 	visiblitySetting := 5
+	
+	;the number of selectable items to display on the screen
+	selectionCount := 15
+	
+	inputHandler := new input_class()
 	
 	/* initialises the class
 	 * @param controller
@@ -102,12 +107,13 @@ class JPGIncOnScreen
 		Gui splash: add, text, x50 yp+1 BackgroundTrans h%height% w%width%, % selectionOutline
 		Gui splash: add, text, % "x50 yp-1 BackgroundTrans c"  this.fillColor " h" height " w" width, % selection
 		
-		Gui, add, Edit, r2 h0 w0 WantTab WantReturn
-
 		if(doShow)
-		{	Gui splash: +lastfound -Caption +AlwaysOnTop -SysMenu +Owner
+		{	Gui splash: +lastfound -Caption +AlwaysOnTop -SysMenu +Owner 
 			WinSet, TransColor, white
-			Gui splash: show, y120, WinscriptSplash
+			Gui splash: show, NoActivate y120, WinscriptSplash
+			WinSet, Style, -0xC00000, WinscriptSplash
+			WinSet, ExStyle, +0x20, WinscriptSplash
+			WinSet, Style, -0x840000, WinscriptSplash
 			this.guiVisible := true
 		} else
 		{	this.guiVisible := false
@@ -152,7 +158,10 @@ class JPGIncOnScreen
 		}
 		Gui splash: +lastfound -Caption +AlwaysOnTop -SysMenu +Owner
 		WinSet, TransColor, white
-		Gui splash: show, y120, WinscriptSplash
+		Gui splash: show, NoActivate y120, WinscriptSplash
+		WinSet, Style, -0xC00000, WinscriptSplash
+		WinSet, ExStyle, +0x20, WinscriptSplash
+		WinSet, Style, -0x840000, WinscriptSplash		
 		this.guiVisible := true
 		return
 	}
@@ -165,16 +174,10 @@ class JPGIncOnScreen
 	 *	If neither is true then nothing happens
 	 */
 	hide()
-	{	if(this.waitingForInput == "oneChar")
-		{	;cause the other input to cancel
-			input, notNeeded, T0.1
-			return
-		} else if(this.waitingForInput == "alternate")
-		{	this.updateEdit("cancelled")
-			return
-		}
+	{	this.inputHandler.Cancel()
 		if(this.guiVisible)
-		{	this.display("","","")
+		{	
+			this.display("","","")
 			Gui splash: hide
 			this.guiVisible := false
 		}
@@ -230,45 +233,28 @@ class JPGIncOnScreen
 	getChoice(origionalChoices, message := "", cancelSettings := "")
 	{	this.setClearKeys(cancelSettings)
 		this.threadNumber++
-		selection := ""
+		selection := {"string": ""}
 		oneChar := ""
+		lastTab := 0
 		filteredChoices := origionalChoices
 		this.updateEdit("")
 		;get the input
 		while true
 		{	
-			;~ this.display(message, this.arrayToString(filteredChoices), selection)
-			;~ oneChar := this.getNextChar(this.threadNumber)
-			;~ if(oneChar == "cancelled")
-			;~ {	this.hide()
-				;~ return "cancelled"
-			;~ } else if(oneChar == "end")
-			;~ {	break
-			;~ } else if(oneChar == "backspace")
-			;~ {	StringTrimRight, selection, selection, 1
-				;~ filteredChoices := this.filterChoices(origionalChoices, selection)
-			;~ } else if(oneChar == "`t")
-			;~ {	;a tab rotates the list of choices
-				;~ this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
-			;~ } else
-			;~ {	selection .= oneChar
-				;~ ;order the list of choices depending on the input from the user
-				;~ filteredChoices := this.filterChoices(origionalChoices, selection)
-			;~ }
-			
-			this.display(message, this.arrayToString(filteredChoices), selection)
-			selection := this.alternateInput(this.threadNumber)
-			if(selection == "cancelled")
+			this.display(message, this.arrayToString(filteredChoices, this.selectionCount), RegExReplace(selection.string, "`t"))
+			selection := this.inputHandler.getCharacter(selection.string)
+			if(selection.value == "cancelled")
 			{	this.hide()
-				return selection
-			} else if(instr(selection, "`n"))
+				return selection.value
+			} else if(instr(selection.string, "`n"))
 			{	break
-			} else if(instr(selection, "`t"))
-			{	this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
-				this.updateEdit(selection := RegExReplace(selection, "`t"))
+			} else if(instr(selection.string, "`t", true, 0) != lastTab)
+			{	
+				lastTab := instr(selection.string, "`t", true, 0)
+				this.firstIsLast(filteredChoices, GetKeyState("shift", "P"))
 				continue
 			}
-			filteredChoices := this.filterChoices(origionalChoices, selection)
+			filteredChoices := this.filterChoices(origionalChoices, RegExReplace(selection.string, "`t"))
 		}
 		this.hide()
 		;return the top element that is being displayed to the user
@@ -277,10 +263,12 @@ class JPGIncOnScreen
 	
 	updateEdit(newValue)
 	{	GuiControl, splash:, Edit1, % newValue
+		gui splash: +LastFound
+		ControlSend, Edit1, {end}, A
 		return
 	}
 	/*
-	 * Gets input from the user.
+	 * Gets a line of input from the user.
 	 * @param message
 	 * 		A string to display to the user
 	 * @param cancelSettings
@@ -291,39 +279,29 @@ class JPGIncOnScreen
 	 *		The input
 	 */
 	getInput(message, cancelSettings := "")
-	{	this.setClearKeys(cancelSettings)
-		this.threadNumber++
+	{	
+		this.setClearKeys(cancelSettings)
 		;required for the display method
 		choices := ""
 		;the input variable
-		input := ""
+		input := {"string": ""}
 		this.updateEdit("")
 		;get the input
 		while true
 		{	
-			;~ this.display(message, choices, input)
-			;~ oneChar := this.getNextChar(this.threadNumber)
-			;~ if(oneChar == "cancelled")
-			;~ {	input := "cancelled"
-				;~ break
-			;~ } else if(oneChar == "end")
-			;~ {	break
-			;~ } else if(oneChar == "backspace")
-			;~ {	StringTrimRight, input, input, 1
-			;~ } else
-			;~ {	input .= oneChar
-			;~ }
-			
-			this.display(message, choices, input)
-			input := this.alternateInput(this.threadNumber)
-			if(input == "cancelled")
-			{	break
-			} else if(instr(input, "`n"))
-			{	break
+			this.display(message, choices, input.string)
+			input := this.inputHandler.getCharacter(input.string)
+			if(input.value == "cancelled")
+			{	
+				input.string := input.value
+				break
+			} else if(instr(input.string, "`n"))
+			{	
+				break
 			}
 		}
 		this.hide()
-		return RegExReplace(input, "`n")
+		return RegExReplace(input.string, "`n")
 	}
 	
 	/*	Sorts an array of strings based on their similarity to a given string. 
@@ -349,7 +327,6 @@ class JPGIncOnScreen
 			score := 0
 			
 			compareStrings := StrSplit(filter, " ")
-
 			loop % compareStrings.maxIndex()
 			{	compareString := compareStrings[A_index]
 			
@@ -401,81 +378,6 @@ class JPGIncOnScreen
 		return returnArray
 	}
 	
-	/* Gets one character from the keyboard. In order to not block alt-tab type
-	 * combinations gathering input is suspended when alt, ctrl or win keys are pressed
-	 * and resumed when the key is released.
-	 *
-	 * @return value
-	 *		a single character 
-	 *		or 'backspace' if backspace was pressed 
-	 *		or 'end' if enter was pressed
-	 *		or 'cancelled' if escape was pressed
-	 */
-	getNextChar(interrupted)
-	{	if(interrupted != this.threadNumber)
-		{	return "cancelled"
-		}
-		this.waitingForInput := "oneChar"
-		input, oneChar, L1,{Esc}{BackSpace}{enter}{Lalt}{RAlt}{Lctrl}{RCtrl}{LWin}{RWin}
-		if(interrupted != this.threadNumber)
-		{	return "cancelled"
-		}
-		this.waitingForInput := false
-		if(ErrorLevel == "EndKey:Backspace")
-		{ 	return "backspace"
-		} else if(ErrorLevel == "EndKey:Escape" || ErrorLevel == "NewInput")
-		{	return "cancelled"
-		}else if(ErrorLevel == "EndKey:Enter")
-		{	return "end"
-		} else if(InStr(errorLevel, "EndKey:"))
-		{	StringReplace, keyName, ErrorLevel, EndKey:
-			send {%keyName% down}
-			KeyWait, % keyName
-			return this.getNextChar(interrupted)
-		}
-		return oneChar
-	} 
-	 
-	alternateInput(interrupted)
-	{	this.waitingForInput := "alternate"
-		GuiControlGet, currentInput, splash:, % "static" this.choiceOffput
-		guicontrol, focus, splash: Edit1
-
-		while(true)
-		{	if(interrupted != this.threadNumber)
-			{	currentInput := "cancelled"
-				break
-			}
-			GuiControlGet, newInput, splash:, Edit1
-			if(newInput != currentInput)
-			{	currentinput := newInput
-				break
-			}
-		
-			gui splash:+LastFound
-			IfWinNotActive
-			{	this.waitModifierKeys()
-				gui splash:+LastFound
-				WinActivate
-				guicontrol, focus, splash: Edit1
-			}
-			sleep, 50
-		}
-		this.waitingForInput := false
-		return currentInput
-	}
-	
-	waitModifierKeys()
-	{	KeyWait, Control
-		KeyWait, Alt
-		KeyWait, LWin
-		KeyWait, rWin
-		KeyWait, LButton
-		KeyWait, RButton
-		KeyWait, MButton
-		return
-	}
-	
 	/*	Takes an array and either makes the first element the last or the opposite
 	 *	this function changes the origional array
 	 *	@param theArray
@@ -483,12 +385,14 @@ class JPGIncOnScreen
 	 *	@param reverse
 	 *		A boolean. if true the last element is made the first
 	 */
-	firstIsLast(ByRef theArray, reverse)
+	firstIsLast(ByRef theArray, reverse, count := 1)
 	{	if(reverse)
-		{	removed := theArray.remove(theArray.maxIndex())
+		{	
+			removed := theArray.remove(theArray.maxIndex())
 			theArray.insert(theArray.minIndex() - 1, removed)
 		} else
-		{	removed := theArray.remove(theArray.minIndex())
+		{	
+			removed := theArray.remove(theArray.minIndex())
 			theArray.insert(theArray.maxIndex() + 1, removed)
 		}
 		return
@@ -496,13 +400,17 @@ class JPGIncOnScreen
 	
 	/*	Converts an array to a string
 	 */
-	arrayToString(theArray)
+	arrayToString(theArray, count := false)
 	{	theString := ""
 		for key, aString in theArray
 		{	if(trim(aString) == "")
 			{	continue
 			}
 			theString .= aString "`n"
+			if(count && count < A_index)
+			{
+				return theString theArray.maxIndex() - A_index " more"
+			}
 		}
 		return theString
 	}	

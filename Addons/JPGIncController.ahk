@@ -1,5 +1,5 @@
 ﻿class JPGIncController
-{	display := new JPGIncOnScreen(this)
+{	display := new JPGIncDisplay(this)
 	context := ""
 	shortcuts := ""
 	codeSegments := ""
@@ -17,7 +17,7 @@
 	
 	enterScriptMode()
 	{	this.context := "shortcutLauncher"
-		shortcutLauncher(this)
+		JPGIncShortcutLauncher(this)
 		return
 	}
 	mouseClick()

@@ -40,7 +40,7 @@ IfNotExist, Addons
     MsgBox, 4, JPGInc ERROR, ERROR the Addons folder does not exist. Would you like to create and populate the folder now?
     IfMsgBox, Yes
     {   
-        unpack()
+        Unpack_Scripts()
     }
 }
 GlobalController := new JPGIncController(JPGIncShortcuts, JPGIncCodeSegments)

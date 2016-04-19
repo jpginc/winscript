@@ -1,4 +1,4 @@
-Unpack_Script()
+Unpack_Scripts()
 {	
 	SetWorkingDir, % A_ScriptDir
 	IfNotExist, Addons

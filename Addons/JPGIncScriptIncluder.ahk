@@ -69,7 +69,7 @@ class JPGIncScriptIncluder
 		return this._selectFileLocation()
 	}
 	
-	_selectFileLocation
+	_selectFileLocation()
 	{
 		this.controller.showMessage("Select the file to load", ignoreMouseClicks := true)
 		
